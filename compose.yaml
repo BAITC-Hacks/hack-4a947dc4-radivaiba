@@ -1,4 +1,21 @@
 services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-careerquest}
+      POSTGRES_USER: ${POSTGRES_USER:-careerquest}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run npm run setup to generate a database password}
+    ports:
+      - '127.0.0.1:${POSTGRES_PORT:-5433}:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
   careerquest:
     build: .
     ports:
@@ -7,9 +24,12 @@ services:
     environment:
       HOST: 0.0.0.0
       PORT: 8080
+      DATABASE_URL: postgresql://${POSTGRES_USER:-careerquest}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-careerquest}?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
       - ./data/seed:/app/data/seed:ro
-      - progress:/app/data/runtime
     restart: unless-stopped
 volumes:
-  progress:
+  postgres_data:

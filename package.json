@@ -16,6 +16,7 @@
     "build": "npm run build --workspace frontend",
     "typecheck": "npm run typecheck --workspace frontend",
     "test": "go -C backend test ./...",
+    "test:postgres": "node scripts/check-postgres.mjs",
     "check": "node scripts/check.mjs"
   },
   "devDependencies": {

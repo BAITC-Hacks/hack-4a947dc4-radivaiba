@@ -8,6 +8,8 @@ RUN npm run build
 
 FROM golang:1.27-alpine AS api
 WORKDIR /src
+COPY backend/go.mod backend/go.sum ./
+RUN go mod download
 COPY backend/ .
 RUN go test ./... && go vet ./... && CGO_ENABLED=0 go build -trimpath -o /server ./cmd/server
 

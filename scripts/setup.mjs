@@ -1,6 +1,7 @@
 import { readFile, writeFile, mkdir, access } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { randomBytes } from 'node:crypto';
+import { parseEnv } from 'node:util';
 import { root, run, finished } from './process.mjs';
 
 try {
@@ -28,27 +29,40 @@ try {
   await mkdir(join(root, 'data/seed'), { recursive: true });
   await mkdir(join(root, 'data/runtime'), { recursive: true });
   for (const [name, bytes] of prepared) await writeFile(join(root, 'data/seed', name), bytes);
+  let envText;
   try {
-    await access(join(root, '.env'));
-  } catch {
-    const template = await readFile(join(root, '.env.example'), 'utf8');
-    await writeFile(
-      join(root, '.env'),
-      template
-        .replace(
-          'DEMO_EMPLOYEE_PASSWORD=',
-          `DEMO_EMPLOYEE_PASSWORD=${randomBytes(8).toString('hex')}`,
-        )
-        .replace('DEMO_HR_PASSWORD=', `DEMO_HR_PASSWORD=${randomBytes(8).toString('hex')}`),
-      { mode: 0o600 },
-    );
+    envText = await readFile(join(root, '.env'), 'utf8');
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+    envText = await readFile(join(root, '.env.example'), 'utf8');
   }
+  const env = parseEnv(envText);
+  function setDefault(key, value) {
+    if (env[key]) return;
+    const line = `${key}=${value}`;
+    const pattern = new RegExp(`^${key}=.*$`, 'm');
+    // A callback keeps literal '$' characters in externally supplied values intact.
+    envText = pattern.test(envText)
+      ? envText.replace(pattern, () => line)
+      : `${envText.trimEnd()}\n${line}\n`;
+    env[key] = value;
+  }
+  setDefault('DEMO_EMPLOYEE_PASSWORD', randomBytes(8).toString('hex'));
+  setDefault('DEMO_HR_PASSWORD', randomBytes(8).toString('hex'));
+  setDefault('POSTGRES_DB', 'careerquest');
+  setDefault('POSTGRES_USER', 'careerquest');
+  setDefault('POSTGRES_PASSWORD', randomBytes(24).toString('hex'));
+  setDefault('POSTGRES_PORT', '5433');
+  setDefault(
+    'DATABASE_URL',
+    `postgresql://${encodeURIComponent(env.POSTGRES_USER)}:${encodeURIComponent(env.POSTGRES_PASSWORD)}@127.0.0.1:${env.POSTGRES_PORT}/${encodeURIComponent(env.POSTGRES_DB)}?sslmode=disable`,
+  );
+  await writeFile(join(root, '.env'), envText, { mode: 0o600 });
   await finished(
     run('go', ['run', './backend/cmd/server'], {
       env: {
         ...process.env,
         VALIDATE_ONLY: '1',
-        STATE_PATH: join(root, 'data/runtime/.setup-validation.json'),
       },
     }),
   );
@@ -61,10 +75,10 @@ try {
   }
   await finished(run('npm', [hasLock ? 'ci' : 'install']));
   console.log(
-    '\nSetup complete. Demo passwords are in .env (npm run credentials). Run npm run demo.',
+    '\nSetup complete. Start PostgreSQL: docker compose up -d postgres. Then run npm run demo.',
   );
   console.log(
-    'Existing runtime progress was preserved. .env and all dataset files are excluded from Git.',
+    'Existing database data and configured .env values were preserved. Seed and .env are excluded from Git.',
   );
 } catch (error) {
   console.error(error.message);

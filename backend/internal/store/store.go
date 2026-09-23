@@ -3,6 +3,8 @@ package store
 import (
 	"careerquest/internal/engine"
 	"careerquest/internal/model"
+	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,15 +13,18 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 )
 
 var ErrNotFound = errors.New("not found")
 var ErrNotEligible = errors.New("activity is not an available recommended step")
+var ErrPersistence = errors.New("cannot persist dataset")
 
 type Store struct {
 	mu   sync.RWMutex
 	data model.Dataset
 	path string
+	db   *sql.DB
 }
 type ImportResult struct {
 	EmployeesAdded   int   `json:"employees_added"`
@@ -38,41 +43,10 @@ func Open(seedDir, statePath string) (*Store, error) {
 	} else if !os.IsNotExist(err) {
 		return nil, err
 	} else {
-		read := func(name string, out any) error {
-			b, e := os.ReadFile(filepath.Join(seedDir, name))
-			if e != nil {
-				return e
-			}
-			if e = DecodeJSON(b, out); e != nil {
-				return fmt.Errorf("%s: %w", name, e)
-			}
-			return nil
-		}
-		if err = read("skills.json", &s.data.Catalog); err != nil {
-			return nil, err
-		}
-		var employees model.EmployeesFile
-		var events model.EventsFile
-		if err = read("employees.json", &employees); err != nil {
-			return nil, err
-		}
-		if err = read("events.json", &events); err != nil {
-			return nil, err
-		}
-		if employees.Meta.AsOfDate != s.data.Catalog.Meta.AsOfDate || events.Meta.AsOfDate != s.data.Catalog.Meta.AsOfDate {
-			return nil, fmt.Errorf("dataset meta.as_of_date values must match")
-		}
-		s.data.Employees = employees.Employees
-		s.data.Events = events.Events
-		b, err := os.ReadFile(filepath.Join(seedDir, "activity_history.csv"))
+		s.data, err = LoadSeed(seedDir)
 		if err != nil {
 			return nil, err
 		}
-		s.data.History, err = ParseHistory(b)
-		if err != nil {
-			return nil, err
-		}
-		s.data.Revision = 1
 	}
 	if err := Validate(s.data); err != nil {
 		return nil, err
@@ -88,7 +62,31 @@ func New(d model.Dataset, path string) (*Store, error) {
 
 // Datasets are immutable after publication. Mutations replace slices instead of changing shared maps.
 func (s *Store) Snapshot() model.Dataset { s.mu.RLock(); defer s.mu.RUnlock(); return s.data }
+func (s *Store) Close() error {
+	if s.db != nil {
+		return s.db.Close()
+	}
+	return nil
+}
+
+// Health checks durable storage; a cached snapshot alone does not mean the database is available.
+func (s *Store) Health(ctx context.Context) error {
+	if s.db == nil {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	return s.db.PingContext(ctx)
+}
+
 func (s *Store) save(next model.Dataset) error {
+	if s.db != nil {
+		if err := s.savePostgres(next); err != nil {
+			return err
+		}
+		s.data = next
+		return nil
+	}
 	if err := os.MkdirAll(filepath.Dir(s.path), 0700); err != nil {
 		return err
 	}
@@ -250,7 +248,7 @@ func (s *Store) Import(employeeJSON, historyCSV []byte) (ImportResult, error) {
 	}
 	next.Revision++
 	if err := s.save(next); err != nil {
-		return ImportResult{}, err
+		return ImportResult{}, fmt.Errorf("%w: %w", ErrPersistence, err)
 	}
 	result.Revision = next.Revision
 	return result, nil

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  ArrowUpRight,
+  Building2,
   ChartNoAxesCombined,
   ChevronRight,
   CircleHelp,
@@ -93,42 +93,57 @@ export default function App() {
     : session.employee_id;
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      <header className="app-header">
         <Brand />
-        <div className="workspace-label">РАБОЧЕЕ ПРОСТРАНСТВО</div>
-        <nav>
+        <nav className="main-nav" aria-label="Основная навигация">
           {isHR && (
-            <button className={isOverview ? 'active' : ''} onClick={() => navigate('/hr')}>
+            <button
+              className={isOverview ? 'active' : ''}
+              aria-current={isOverview ? 'page' : undefined}
+              onClick={() => navigate('/hr')}
+            >
               <ChartNoAxesCombined size={19} />
               Обзор команды
             </button>
           )}
           <button
             className={!isOverview ? 'active' : ''}
+            aria-current={!isOverview ? 'page' : undefined}
             onClick={() => navigate(`/employees/${isHR ? selectedId : session.employee_id}`)}
           >
             <Route size={19} />
             {isHR ? 'Профиль сотрудника' : 'Моя траектория'}
           </button>
         </nav>
-        <div className="sidebar-tip">
-          <span className="tip-icon">
-            <ArrowUpRight size={22} />
-          </span>
-          <h3>Рост — это путь</h3>
-          <p>Сосредоточьтесь на следующем полезном шаге. Остальное придёт с опытом.</p>
+        <div className="workspace-location">
+          <Building2 size={16} />
+          Пространство развития
         </div>
-        <div className="sidebar-bottom">
-          <button onClick={() => setShowHelp((v) => !v)}>
+        <div className="topbar-actions">
+          <button
+            className={`icon-button ${showHelp ? 'active' : ''}`}
+            title="Как это работает"
+            aria-label="Как это работает"
+            aria-expanded={showHelp}
+            aria-controls="help-panel"
+            onClick={() => setShowHelp((v) => !v)}
+          >
             <CircleHelp size={18} />
-            Как это работает
           </button>
-          <div className="local-label">
-            <span />
-            Локальное демо
-          </div>
+          <span className="role-pill">
+            <span className="role-avatar">
+              <ShieldCheck size={18} />
+            </span>
+            <span>
+              {isHR ? 'HR-команда' : 'Сотрудник'}
+              <small>Career Quest</small>
+            </span>
+          </span>
+          <button className="icon-button" title="Выйти" aria-label="Выйти" onClick={logout}>
+            <LogOut size={18} />
+          </button>
         </div>
-      </aside>
+      </header>
       <div className="workspace">
         <header className="topbar">
           <div className="breadcrumb">
@@ -136,20 +151,15 @@ export default function App() {
             <ChevronRight size={14} />
             <strong>{isOverview ? 'HR-обзор' : 'Траектория'}</strong>
           </div>
-          <div className="topbar-actions">
-            <span className="role-pill">
-              <ShieldCheck size={15} />
-              {isHR ? 'HR-команда' : 'Сотрудник'}
-            </span>
-            <button className="icon-button" title="Выйти" aria-label="Выйти" onClick={logout}>
-              <LogOut size={18} />
-            </button>
+          <div className="local-label">
+            <span />
+            Локальное демо
           </div>
         </header>
         <main className="main-content">
           {error && <ErrorMessage message={error} />}{' '}
           {showHelp && (
-            <section className="help-panel panel">
+            <section className="help-panel panel" id="help-panel">
               <h2>Как строится ваш путь</h2>
               <p>
                 Мы сравниваем навыки с требованиями карьерной цели. Из доступных активностей

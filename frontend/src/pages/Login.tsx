@@ -32,7 +32,8 @@ export default function Login({ onLogin }: { onLogin: (session: Session) => void
             Большой рост
             <br />
             начинается
-            <br />с <em>следующего шага.</em>
+            <br />
+            со <em>следующего шага.</em>
           </h1>
           <p>
             Навыки, возможности и понятный путь к вашей цели. Развивайтесь осознанно — в своём
@@ -70,6 +71,7 @@ export default function Login({ onLogin }: { onLogin: (session: Session) => void
             <button
               type="button"
               className={role === 'employee' ? 'selected' : ''}
+              aria-pressed={role === 'employee'}
               onClick={() => setRole('employee')}
             >
               Сотрудник
@@ -77,6 +79,7 @@ export default function Login({ onLogin }: { onLogin: (session: Session) => void
             <button
               type="button"
               className={role === 'hr' ? 'selected' : ''}
+              aria-pressed={role === 'hr'}
               onClick={() => setRole('hr')}
             >
               HR-команда

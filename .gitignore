@@ -1,0 +1,17 @@
+node_modules/
+frontend/dist/
+backend/bin/
+data/seed/*
+!data/seed/.gitkeep
+data/runtime/*
+!data/runtime/.gitkeep
+.env
+.env.*
+!.env.example
+*.log
+coverage/
+playwright-report/
+test-results/
+tmp/
+.cache/
+*.tsbuildinfo

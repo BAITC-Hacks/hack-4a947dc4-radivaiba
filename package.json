@@ -1,0 +1,24 @@
+{
+  "name": "career-quest",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "frontend"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "demo": "node scripts/run.mjs demo",
+    "dev": "node scripts/run.mjs dev",
+    "credentials": "node scripts/credentials.mjs",
+    "build": "npm run build --workspace frontend",
+    "typecheck": "npm run typecheck --workspace frontend",
+    "test": "go -C backend test ./...",
+    "check": "node scripts/check.mjs"
+  },
+  "devDependencies": {
+    "prettier": "3.9.9"
+  }
+}

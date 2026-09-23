@@ -1,0 +1,351 @@
+@media (min-width: 1500px) {
+  .main-content {
+    padding-top: 42px !important;
+  }
+  .profile-grid {
+    grid-template-columns: 320px minmax(0, 1fr) !important;
+  }
+  .journey-title {
+    margin: 30px 0 !important;
+  }
+  .recommendation h3 {
+    font-size: 17px !important;
+  }
+  .rec-description {
+    font-size: 12px !important;
+  }
+  .gain-list > div {
+    font-size: 11px !important;
+  }
+  .recommendation .button {
+    font-size: 12px !important;
+  }
+}
+@media (max-width: 1150px) {
+  .sidebar {
+    width: 195px !important;
+    padding: 26px 17px !important;
+  }
+  .brand {
+    font-size: 21px !important;
+  }
+  .brand small {
+    font-size: 5.5px !important;
+  }
+  .workspace {
+    margin-left: 195px !important;
+  }
+  .main-content {
+    padding: 27px 24px 0 !important;
+  }
+  .topbar {
+    padding: 0 24px !important;
+  }
+  .profile-grid {
+    grid-template-columns: 250px minmax(0, 1fr) !important;
+  }
+  .journey-card {
+    padding: 23px 24px 0 !important;
+  }
+  .journey-foot {
+    margin: 0 -24px !important;
+  }
+  .journey-foot > span {
+    display: none;
+  }
+  .journey-chip {
+    display: none !important;
+  }
+  .progress-ring {
+    width: 106px !important;
+    height: 106px !important;
+  }
+  .recommendation {
+    padding: 16px !important;
+  }
+  .event-meta {
+    gap: 8px !important;
+  }
+  .snapshot {
+    display: none !important;
+  }
+  .stats-grid {
+    gap: 10px !important;
+  }
+  .stat {
+    padding: 16px !important;
+  }
+  .hr-grid {
+    gap: 16px !important;
+  }
+  .hr-panel {
+    padding: 20px !important;
+  }
+  .page-heading h1 {
+    font-size: 26px !important;
+  }
+  td,
+  th {
+    padding-left: 18px !important;
+    padding-right: 18px !important;
+  }
+}
+@media (max-width: 900px) {
+  .sidebar {
+    width: 175px !important;
+    padding: 25px 13px !important;
+  }
+  .workspace {
+    margin-left: 175px !important;
+  }
+  .sidebar .brand {
+    gap: 6px;
+    font-size: 19px !important;
+  }
+  .sidebar .brand-icon {
+    width: 32px;
+    height: 35px;
+  }
+  .workspace-label {
+    font-size: 7px !important;
+    letter-spacing: 0.7px !important;
+  }
+  .sidebar nav button {
+    font-size: 10px !important;
+    padding: 11px 8px !important;
+    gap: 7px !important;
+  }
+  .sidebar-tip {
+    padding: 15px !important;
+  }
+  .profile-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .profile-card {
+    display: block !important;
+  }
+  .recommendation-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .recommendation h3 {
+    min-height: 0 !important;
+  }
+  .rec-description {
+    min-height: 0 !important;
+  }
+  .recommendation .gain-list {
+    margin-top: 0 !important;
+  }
+  .stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .hr-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .employee-picker {
+    flex-wrap: wrap;
+  }
+  .employee-picker select {
+    max-width: 100% !important;
+  }
+  .page-heading {
+    align-items: flex-start !important;
+  }
+  .page-heading > .button {
+    font-size: 10px !important;
+  }
+  .login-story {
+    padding: 35px !important;
+  }
+  .story-content h1 {
+    font-size: 40px !important;
+  }
+  .story-content .eyebrow {
+    font-size: 7px !important;
+  }
+  .login-form-wrap {
+    padding: 30px !important;
+  }
+  .login-form h2 {
+    font-size: 24px !important;
+  }
+}
+@media (max-width: 600px) {
+  .sidebar {
+    position: static !important;
+    width: 100% !important;
+    flex-direction: row !important;
+    align-items: center;
+    padding: 15px !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid #e6ebe7;
+    gap: 14px;
+  }
+  .sidebar .brand {
+    font-size: 18px !important;
+  }
+  .sidebar .brand small,
+  .sidebar .brand-icon {
+    display: none;
+  }
+  .sidebar nav {
+    flex-direction: row !important;
+    gap: 2px !important;
+    margin-left: auto;
+  }
+  .sidebar nav button {
+    font-size: 9px !important;
+    padding: 8px 7px !important;
+  }
+  .sidebar nav button svg {
+    width: 15px;
+  }
+  .workspace-label,
+  .sidebar-tip,
+  .sidebar-bottom {
+    display: none !important;
+  }
+  .app-shell {
+    display: block !important;
+  }
+  .workspace {
+    margin-left: 0 !important;
+  }
+  .topbar {
+    height: 54px !important;
+    padding: 0 17px !important;
+  }
+  .breadcrumb {
+    font-size: 8px !important;
+    gap: 7px !important;
+  }
+  .role-pill {
+    font-size: 8px !important;
+    gap: 4px !important;
+  }
+  .topbar-actions {
+    gap: 8px !important;
+  }
+  .main-content {
+    padding: 24px 17px 0 !important;
+  }
+  .page-heading {
+    display: block !important;
+    margin-bottom: 22px !important;
+  }
+  .page-heading > .button {
+    margin-top: 15px;
+  }
+  .page-heading h1 {
+    font-size: 25px !important;
+  }
+  .page-heading p {
+    font-size: 11px !important;
+  }
+  .journey-card {
+    padding: 22px 20px 0 !important;
+  }
+  .journey-title h2 {
+    font-size: 29px !important;
+  }
+  .journey-title h2 span {
+    font-size: 17px !important;
+  }
+  .journey-foot {
+    margin: 0 -20px !important;
+    padding: 12px 20px !important;
+  }
+  .journey-stages {
+    font-size: 8px !important;
+    gap: 5px !important;
+  }
+  .journey-stages span {
+    gap: 4px !important;
+  }
+  .journey-stages svg {
+    width: 12px;
+  }
+  .section-heading h2 {
+    font-size: 18px !important;
+  }
+  .table-intro > span {
+    display: none !important;
+  }
+  .tabs {
+    gap: 18px !important;
+    padding: 0 17px !important;
+  }
+  .tabs button {
+    font-size: 10px !important;
+  }
+  .skills-table {
+    min-width: 540px;
+  }
+  .page-footer {
+    font-size: 7px !important;
+  }
+  .stats-grid {
+    gap: 10px !important;
+  }
+  .stat strong {
+    font-size: 25px !important;
+  }
+  .panel-heading {
+    display: block !important;
+    padding: 20px !important;
+  }
+  .panel-heading .search {
+    margin-top: 15px;
+  }
+  .search input {
+    max-width: none !important;
+    width: 100%;
+  }
+  .upload-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .login-page {
+    grid-template-columns: 1fr !important;
+  }
+  .login-story {
+    padding: 25px !important;
+    min-height: 320px;
+  }
+  .story-content {
+    padding: 35px 0 !important;
+  }
+  .story-content h1 {
+    font-size: 36px !important;
+    margin-top: 18px !important;
+    letter-spacing: -1.4px !important;
+  }
+  .story-content h1 br {
+    display: none;
+  }
+  .story-content > p,
+  .story-path,
+  .path-labels,
+  .story-footer {
+    display: none !important;
+  }
+  .login-form-wrap {
+    padding: 40px 25px !important;
+  }
+  .login-form {
+    max-width: none !important;
+  }
+  .error,
+  .success {
+    font-size: 11px !important;
+  }
+  .employee-picker {
+    gap: 8px !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,449 @@
+openapi: 3.0.3
+info:
+  title: Career Quest API
+  version: 1.0.0
+  description: Local demo. Session cookies enforce employee/HR access. Snapshot date comes from the dataset, not the system clock.
+servers:
+  - url: /api
+security:
+  - sessionCookie: []
+paths:
+  /health:
+    get:
+      security: []
+      responses:
+        '200':
+          description: Dataset loaded and ready
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, as_of_date, revision]
+                properties:
+                  status: { type: string, enum: [ok] }
+                  as_of_date: { type: string, format: date }
+                  revision: { type: integer }
+  /session:
+    post:
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role, password]
+              additionalProperties: false
+              properties:
+                role: { type: string, enum: [employee, hr] }
+                password: { type: string, format: password }
+      responses:
+        '200':
+          description: Session created; HttpOnly SameSite=Strict cookie, 8 hours
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Session' }
+        '401': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/Error' }
+    get:
+      responses:
+        '200':
+          description: Current session
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Session' }
+        '401': { $ref: '#/components/responses/Error' }
+    delete:
+      responses:
+        '204': { description: Cookie and session removed }
+  /employees:
+    get:
+      description: HR only
+      responses:
+        '200':
+          description: Employee directory
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/EmployeeSummary' }
+        '403': { $ref: '#/components/responses/Error' }
+  /employees/{id}:
+    parameters:
+      - { $ref: '#/components/parameters/EmployeeID' }
+    get:
+      description: Own profile or any profile for HR
+      responses:
+        '200':
+          description: Profile with effective skills and trajectory
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Profile' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /employees/{id}/recommendations:
+    parameters:
+      - { $ref: '#/components/parameters/EmployeeID' }
+    get:
+      description: Up to three validated recommendations. LLM timeout is at most 8 seconds; fallback is explicit. No candidates is a successful empty response.
+      responses:
+        '200':
+          description: Recommendation result
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecommendationResult' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /employees/{id}/completions:
+    parameters:
+      - { $ref: '#/components/parameters/EmployeeID' }
+    post:
+      description: Demo completion at as_of_date. Only useful eligible activities. Idempotent per employee/event, or employee/event/date for EV_036. Persistence succeeds before response.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [event_id]
+              properties:
+                event_id: { type: string }
+      responses:
+        '200':
+          description: Updated profile; changed=false for an already completed occurrence
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [profile, changed]
+                properties:
+                  profile: { $ref: '#/components/schemas/Profile' }
+                  changed: { type: boolean }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '500': { $ref: '#/components/responses/Error' }
+  /hr/overview:
+    get:
+      description: HR only; computed without LLM calls
+      responses:
+        '200':
+          description: Aggregated target skill gaps and participation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Overview' }
+        '403': { $ref: '#/components/responses/Error' }
+  /hr/import:
+    post:
+      description: HR only. At least one file, max 12 MiB request. Employees envelope matches starter kit, same as_of_date. Upsert by employee_id and record_id. Atomic validation of the merged dataset. DEMO_ record prefix reserved.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                employees: { type: string, format: binary, description: employees.json }
+                history: { type: string, format: binary, description: activity_history.csv }
+      responses:
+        '200':
+          description: Import committed
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  [employees_added, employees_updated, history_added, history_updated, revision]
+                properties:
+                  employees_added: { type: integer }
+                  employees_updated: { type: integer }
+                  history_added: { type: integer }
+                  history_updated: { type: integer }
+                  revision: { type: integer }
+        '400': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: careerquest_session
+  parameters:
+    EmployeeID:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+  responses:
+    Error:
+      description: Error; no partial mutations
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error:
+                type: object
+                required: [code, message]
+                properties:
+                  code: { type: string }
+                  message: { type: string }
+  schemas:
+    Session:
+      type: object
+      required: [role, employee_id]
+      properties:
+        role: { type: string, enum: [employee, hr] }
+        employee_id: { type: string, description: Empty for HR }
+    Goal:
+      type: object
+      required: [target_role, target_grade]
+      properties:
+        target_role: { type: string }
+        target_grade: { type: string, enum: [Junior, Middle, Senior, Lead] }
+    EmployeeSummary:
+      type: object
+      required: [employee_id, full_name, department, role, grade]
+      properties:
+        employee_id: { type: string }
+        full_name: { type: string }
+        department: { type: string }
+        role: { type: string }
+        grade: { type: string, enum: [Junior, Middle, Senior, Lead] }
+    Employee:
+      allOf:
+        - { $ref: '#/components/schemas/EmployeeSummary' }
+        - type: object
+          required:
+            [
+              manager_id,
+              hire_date,
+              tenure_months,
+              work_format,
+              preferred_language,
+              career_goal,
+              skills,
+              last_review_date,
+            ]
+          properties:
+            manager_id: { type: string, nullable: true }
+            hire_date: { type: string, format: date }
+            tenure_months: { type: integer }
+            work_format: { type: string, enum: [office, hybrid, remote] }
+            preferred_language: { type: string, enum: [kk, ru, en] }
+            career_goal:
+              nullable: true
+              allOf:
+                - { $ref: '#/components/schemas/Goal' }
+            skills:
+              type: object
+              additionalProperties: { type: integer, minimum: 0, maximum: 5 }
+            last_review_date: { type: string, format: date }
+    SkillProgress:
+      type: object
+      required: [skill_id, name, type, current, required, gap, critical]
+      properties:
+        skill_id: { type: string }
+        name: { type: string }
+        type: { type: string, enum: [hard, soft] }
+        current: { type: integer, minimum: 0, maximum: 5 }
+        required: { type: integer, minimum: 0, maximum: 5 }
+        gap: { type: integer }
+        critical: { type: boolean }
+    Trajectory:
+      type: object
+      required: [goal, inferred, at_top_grade, progress, critical_gaps, skills]
+      properties:
+        goal: { $ref: '#/components/schemas/Goal' }
+        inferred: { type: boolean }
+        at_top_grade: { type: boolean }
+        progress: { type: number, minimum: 0, maximum: 100 }
+        critical_gaps: { type: integer }
+        skills:
+          type: array
+          items: { $ref: '#/components/schemas/SkillProgress' }
+    HistoryItem:
+      type: object
+      required:
+        [
+          record_id,
+          employee_id,
+          event_id,
+          event_title,
+          date,
+          due_date,
+          status,
+          completion_pct,
+          score,
+          feedback_rating,
+          assigned_by,
+        ]
+      properties:
+        record_id: { type: string }
+        employee_id: { type: string }
+        event_id: { type: string }
+        event_title: { type: string }
+        date: { type: string, format: date }
+        due_date: { type: string, description: Empty when absent }
+        status:
+          { type: string, enum: [completed, in_progress, dropped, no_show, declined, overdue] }
+        completion_pct: { type: integer, minimum: 0, maximum: 100 }
+        score: { type: integer, nullable: true }
+        feedback_rating: { type: integer, nullable: true }
+        assigned_by: { type: string, enum: [self, manager, hr] }
+        demo: { type: boolean }
+    Profile:
+      type: object
+      required: [employee, effective_skills, trajectory, history, as_of_date, revision]
+      properties:
+        employee: { $ref: '#/components/schemas/Employee' }
+        effective_skills:
+          type: object
+          additionalProperties: { type: integer }
+        trajectory: { $ref: '#/components/schemas/Trajectory' }
+        history:
+          type: array
+          items: { $ref: '#/components/schemas/HistoryItem' }
+        as_of_date: { type: string, format: date }
+        revision: { type: integer }
+    Event:
+      type: object
+      required:
+        [
+          event_id,
+          title,
+          description,
+          type,
+          format,
+          duration_hours,
+          mandatory,
+          target_roles,
+          target_grades,
+          develops_skills,
+          prerequisites,
+          upcoming_sessions,
+        ]
+      properties:
+        event_id: { type: string }
+        title: { type: string }
+        description: { type: string }
+        type: { type: string }
+        format: { type: string, enum: [online, offline, self_paced] }
+        duration_hours: { type: number }
+        mandatory: { type: boolean }
+        target_roles: { type: array, items: { type: string } }
+        target_grades: { type: array, items: { type: string } }
+        develops_skills:
+          type: array
+          items:
+            type: object
+            properties:
+              skill_id: { type: string }
+              gain: { type: integer }
+              max_level: { type: integer }
+        prerequisites: { type: object, additionalProperties: { type: integer } }
+        upcoming_sessions: { type: array, items: { type: string, format: date } }
+    Recommendation:
+      type: object
+      required: [event, score, expected_gains, evidence, explanation, cross_role, in_progress]
+      properties:
+        event: { $ref: '#/components/schemas/Event' }
+        score: { type: number }
+        expected_gains:
+          type: array
+          items:
+            type: object
+            required: [skill_id, name, before, after, required]
+            properties:
+              skill_id: { type: string }
+              name: { type: string }
+              before: { type: integer }
+              after: { type: integer }
+              required: { type: integer }
+        evidence:
+          type: array
+          items:
+            type: object
+            required: [id, factor, text]
+            properties:
+              id: { type: string }
+              factor: { type: string, enum: [goal, gap, history] }
+              text: { type: string }
+        explanation: { type: string }
+        cross_role: { type: boolean }
+        in_progress: { type: boolean }
+    RecommendationResult:
+      type: object
+      required: [items, mode, notice, empty_reason, revision]
+      properties:
+        items:
+          type: array
+          maxItems: 3
+          items: { $ref: '#/components/schemas/Recommendation' }
+        mode: { type: string, enum: [llm, rules] }
+        notice: { type: string }
+        empty_reason: { type: string }
+        revision: { type: integer }
+    Overview:
+      type: object
+      required:
+        [
+          employee_count,
+          event_count,
+          skill_count,
+          history_count,
+          average_progress,
+          gaps,
+          without_next_step,
+          participation,
+          as_of_date,
+          revision,
+        ]
+      properties:
+        employee_count: { type: integer }
+        event_count: { type: integer }
+        skill_count: { type: integer }
+        history_count: { type: integer }
+        average_progress: { type: number }
+        as_of_date: { type: string, format: date }
+        revision: { type: integer }
+        gaps:
+          type: array
+          items:
+            type: object
+            required: [skill_id, name, count, required_by, critical_count]
+            properties:
+              skill_id: { type: string }
+              name: { type: string }
+              count: { type: integer }
+              required_by: { type: integer }
+              critical_count: { type: integer }
+        without_next_step:
+          type: array
+          items:
+            type: object
+            required: [employee_id, full_name, department, reason]
+            properties:
+              employee_id: { type: string }
+              full_name: { type: string }
+              department: { type: string }
+              reason: { type: string }
+        participation:
+          type: array
+          items:
+            type: object
+            required: [event_id, title, mandatory, total, completed, statuses]
+            properties:
+              event_id: { type: string }
+              title: { type: string }
+              mandatory: { type: boolean }
+              total: { type: integer }
+              completed: { type: integer }
+              statuses: { type: object, additionalProperties: { type: integer } }

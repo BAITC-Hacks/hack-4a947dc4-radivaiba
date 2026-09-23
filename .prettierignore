@@ -1,0 +1,6 @@
+node_modules
+frontend/dist
+data
+tmp
+.cache
+package-lock.json

@@ -1,0 +1,5 @@
+Asset: office-atrium.png
+Generated with the built-in imagegen tool for Career Quest, September 2026.
+
+Prompt:
+Use case: photorealistic-natural. Asset type: full-bleed background photograph for a translucent smoked-glass career development dashboard. Primary request: sophisticated contemporary office building interior, an empty sunlit executive office corridor with floor-to-ceiling windows on the left and tall black metal framed glass meeting rooms on the right. Wide landscape 16:9 architectural editorial photography at eye level, 24mm lens. Warm gray concrete floors, dark charcoal window mullions, quiet beige and taupe surfaces, subtle walnut furniture in far background, modern office towers and soft trees glimpsed outside. Natural soft overcast afternoon light, restrained neutral palette, realistic reflections, generous quiet center, stronger architectural details around the edges. Premium architectural photography, believable office, not futuristic, no people, no screens, absolutely no UI panels or interface, no lettering, no logos, no watermark.

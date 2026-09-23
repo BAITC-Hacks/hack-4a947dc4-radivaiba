@@ -21,6 +21,7 @@ import {
   ErrorMessage,
   formatLabels,
   Loading,
+  Stat,
   statusLabels,
   typeLabels,
 } from '../components/Shared';
@@ -161,7 +162,7 @@ export default function EmployeePage({ id }: { id: string }) {
         <div>
           <div className="eyebrow">ЛИЧНЫЙ КАБИНЕТ</div>
           <h1>
-            Ваш следующий шаг, {firstName}
+            Ваше пространство, {firstName}
             <span className="heading-dot">.</span>
           </h1>
           <p>Каждая новая компетенция приближает вас к цели.</p>
@@ -171,6 +172,24 @@ export default function EmployeePage({ id }: { id: string }) {
           Срез на {dateLabel(profile.as_of_date)}
         </span>
       </header>
+      <div className="stats-grid employee-stats">
+        <Stat
+          label="Готовность к цели"
+          value={`${trajectory.progress}%`}
+          note="по требованиям роли"
+        />
+        <Stat label="Активностей завершено" value={completed} note="в вашей истории развития" />
+        <Stat
+          label="Навыков в траектории"
+          value={trajectory.skills.length}
+          note="на вашей карте компетенций"
+        />
+        <Stat
+          label="В фокусе развития"
+          value={trajectory.critical_gaps}
+          note="критических разрывов"
+        />
+      </div>
       <div className="profile-grid">
         <section className="profile-card panel">
           <div className="avatar">
@@ -228,9 +247,21 @@ export default function EmployeePage({ id }: { id: string }) {
             </div>
             <div
               className="progress-ring"
-              style={{ '--progress': `${trajectory.progress}%` } as React.CSSProperties}
+              role="img"
+              aria-label={`Готовность к цели: ${trajectory.progress}%`}
             >
-              <div>
+              <svg viewBox="0 0 120 120" aria-hidden="true">
+                <circle className="ring-track" cx="60" cy="60" r="52" />
+                <circle
+                  className="ring-value"
+                  cx="60"
+                  cy="60"
+                  r="52"
+                  pathLength="100"
+                  strokeDasharray={`${trajectory.progress} 100`}
+                />
+              </svg>
+              <div className="ring-label">
                 <strong>
                   {trajectory.progress}
                   <small>%</small>
@@ -311,11 +342,19 @@ export default function EmployeePage({ id }: { id: string }) {
       </section>
       <section className="section panel skills-panel">
         <div className="tabs">
-          <button className={tab === 'skills' ? 'active' : ''} onClick={() => setTab('skills')}>
+          <button
+            className={tab === 'skills' ? 'active' : ''}
+            aria-pressed={tab === 'skills'}
+            onClick={() => setTab('skills')}
+          >
             <BookOpen size={17} />
             Карта навыков<span>{trajectory.skills.length}</span>
           </button>
-          <button className={tab === 'history' ? 'active' : ''} onClick={() => setTab('history')}>
+          <button
+            className={tab === 'history' ? 'active' : ''}
+            aria-pressed={tab === 'history'}
+            onClick={() => setTab('history')}
+          >
             <Clock3 size={17} />
             История развития<span>{profile.history.length}</span>
           </button>

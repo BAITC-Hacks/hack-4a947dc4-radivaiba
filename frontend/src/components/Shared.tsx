@@ -1,33 +1,41 @@
-import { AlertCircle, ArrowUpRight, Compass, LoaderCircle } from 'lucide-react';
+import { useEffect, useRef, type ReactNode } from 'react';
+import { AlertCircle, Leaf, LoaderCircle, RotateCcw, X } from 'lucide-react';
+import { formatDate, useI18n, useLabels } from '../i18n';
 export function Brand() {
+  const { tr } = useI18n();
   return (
-    <div className="brand">
+    <a href="#/" className="brand" aria-label="Career Quest">
       <span className="brand-icon">
-        <Compass size={23} strokeWidth={1.8} />
+        <Leaf size={24} />
       </span>
       <span>
         career<span className="brand-light">quest</span>
-        <small>РАСТИ В СВОЁМ НАПРАВЛЕНИИ</small>
+        <small>
+          {tr('Расти в своём направлении', 'Өз бағытыңызда өсіңіз', 'Grow in your own direction')}
+        </small>
       </span>
-    </div>
+    </a>
   );
 }
-export function Loading({ text = 'Загружаем данные…' }: { text?: string }) {
+export function Loading({ text }: { text?: string }) {
+  const { tr } = useI18n();
   return (
     <div className="loading" role="status">
       <LoaderCircle className="spin" size={22} />
-      {text}
+      {text || tr('Загружаем…', 'Жүктелуде…', 'Loading…')}
     </div>
   );
 }
 export function ErrorMessage({ message, retry }: { message: string; retry?: () => void }) {
+  const { tr } = useI18n();
   return (
     <div className="error" role="alert">
-      <AlertCircle size={18} />
+      <AlertCircle size={20} />
       <span>{message}</span>
       {retry && (
         <button className="text-button" onClick={retry}>
-          Повторить
+          <RotateCcw size={15} />
+          {tr('Повторить', 'Қайталау', 'Retry')}
         </button>
       )}
     </div>
@@ -36,7 +44,7 @@ export function ErrorMessage({ message, retry }: { message: string; retry?: () =
 export function Empty({ title, text }: { title: string; text: string }) {
   return (
     <div className="empty">
-      <Compass size={32} />
+      <Leaf size={30} />
       <h3>{title}</h3>
       <p>{text}</p>
     </div>
@@ -54,20 +62,74 @@ export function Stat({
   return (
     <div className="stat">
       <span>{label}</span>
-      <strong>
-        {value}
-        <ArrowUpRight size={20} />
-      </strong>
+      <strong>{value}</strong>
       <small>{note}</small>
     </div>
   );
 }
-export const dateLabel = (date: string) =>
-  new Date(`${date}T12:00:00`).toLocaleDateString('ru-RU', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
+export function Status({ value }: { value: string }) {
+  const { status } = useLabels();
+  return (
+    <span className={`status status-${value}`}>
+      <i />
+      {status(value)}
+    </span>
+  );
+}
+export function Modal({
+  title,
+  children,
+  onClose,
+  wide = false,
+}: {
+  title: string;
+  children: ReactNode;
+  onClose: () => void;
+  wide?: boolean;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const { tr } = useI18n();
+  useEffect(() => {
+    const dialog = ref.current;
+    dialog?.showModal();
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      dialog?.close();
+      document.body.style.overflow = previous;
+    };
+  }, []);
+  return (
+    <dialog
+      ref={ref}
+      className={`dialog ${wide ? 'dialog-wide' : ''}`}
+      aria-labelledby="dialog-title"
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <div className="dialog-content">
+        <header className="dialog-header">
+          <h2 id="dialog-title">{title}</h2>
+          <button
+            className="icon-button"
+            autoFocus
+            onClick={onClose}
+            aria-label={tr('Закрыть', 'Жабу', 'Close')}
+          >
+            <X size={21} />
+          </button>
+        </header>
+        {children}
+      </div>
+    </dialog>
+  );
+}
+export const dateLabel = formatDate;
 export const statusLabels: Record<string, string> = {
   completed: 'Завершено',
   in_progress: 'В процессе',

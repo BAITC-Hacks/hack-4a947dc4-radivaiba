@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"careerquest/internal/model"
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/hex"
@@ -12,10 +13,34 @@ import (
 const cookieName = "careerquest_session"
 
 type Session struct {
+	AccountID  string    `json:"account_id"`
+	LoginName  string    `json:"login"`
+	Locale     string    `json:"locale"`
 	Role       string    `json:"role"`
 	EmployeeID string    `json:"employee_id"`
 	Expires    time.Time `json:"-"`
 }
+
+// LoginAccount issues a session only after the caller verifies the stored account.
+func (m *Manager) LoginAccount(w http.ResponseWriter, account model.Account) Session {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		panic(err)
+	}
+	token := hex.EncodeToString(b)
+	s := Session{AccountID: account.ID, LoginName: account.Login, Locale: account.Locale, Role: account.Role, EmployeeID: account.EmployeeID, Expires: time.Now().Add(8 * time.Hour)}
+	m.mu.Lock()
+	for key, v := range m.sessions {
+		if time.Now().After(v.Expires) {
+			delete(m.sessions, key)
+		}
+	}
+	m.sessions[token] = s
+	m.mu.Unlock()
+	http.SetCookie(w, &http.Cookie{Name: cookieName, Value: token, Path: "/", HttpOnly: true, SameSite: http.SameSiteStrictMode, MaxAge: 8 * 60 * 60})
+	return s
+}
+
 type Manager struct {
 	mu                                       sync.Mutex
 	sessions                                 map[string]Session

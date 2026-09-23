@@ -7,7 +7,11 @@ import (
 )
 
 func SummarizeHR(d model.Dataset) model.Overview {
-	result := model.Overview{EmployeeCount: len(d.Employees), EventCount: len(d.Events), SkillCount: len(d.Catalog.Skills), HistoryCount: len(d.History), Gaps: []model.GapSummary{}, WithoutNextStep: []model.NoStep{}, Participation: []model.Participation{}, AsOfDate: d.Catalog.Meta.AsOfDate, Revision: d.Revision}
+	return SummarizeHRLocale(d, "ru")
+}
+
+func SummarizeHRLocale(d model.Dataset, locale string) model.Overview {
+	result := model.Overview{EmployeeCount: len(d.Employees), EventCount: len(d.Events), SkillCount: len(d.Catalog.Skills), HistoryCount: len(d.History), Gaps: []model.GapSummary{}, WithoutNextStep: []model.NoStep{}, Participation: []model.Participation{}, AsOfDate: BusinessDate(d), Revision: d.Revision}
 	gaps := map[string]model.GapSummary{}
 	for _, e := range d.Employees {
 		t := BuildTrajectory(d, e, EffectiveSkills(d, e))
@@ -29,7 +33,7 @@ func SummarizeHR(d model.Dataset) model.Overview {
 			gaps[s.SkillID] = g
 		}
 		if len(RankCandidates(d, e)) == 0 {
-			result.WithoutNextStep = append(result.WithoutNextStep, model.NoStep{EmployeeID: e.ID, FullName: e.FullName, Department: e.Department, Reason: EmptyReason(d, e)})
+			result.WithoutNextStep = append(result.WithoutNextStep, model.NoStep{EmployeeID: e.ID, FullName: e.FullName, Department: e.Department, Reason: EmptyReasonLocale(d, e, locale)})
 		}
 	}
 	if len(d.Employees) > 0 {
@@ -49,7 +53,7 @@ func SummarizeHR(d model.Dataset) model.Overview {
 	for _, e := range d.Events {
 		p := model.Participation{EventID: e.ID, Title: e.Title, Mandatory: e.Mandatory, Statuses: map[string]int{}}
 		for _, r := range d.History {
-			if r.EventID != e.ID || r.Date > d.Catalog.Meta.AsOfDate {
+			if r.EventID != e.ID || r.Date > BusinessDate(d) {
 				continue
 			}
 			p.Total++

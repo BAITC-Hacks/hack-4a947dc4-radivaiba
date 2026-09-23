@@ -154,7 +154,7 @@ func seedPostgres(ctx context.Context, tx *sql.Tx, d model.Dataset) error {
 			return err
 		}
 	}
-	return nil
+	return writeWorkflow(ctx, tx, d.Workflow)
 }
 
 // Table and column names come exclusively from these constants, never from input.
@@ -162,7 +162,7 @@ var postgresTables = map[string]struct{ key, columns string }{
 	"skills":           {"skill_id", "skill_id,name,type,category,description,position"},
 	"role_profiles":    {"role,grade", "role,grade,required_skills,critical_skills,position"},
 	"employees":        {"employee_id", "employee_id,full_name,department,role,grade,manager_id,hire_date,tenure_months,work_format,preferred_language,career_goal,skills,last_review_date,position"},
-	"events":           {"event_id", "event_id,title,type,format,duration_hours,mandatory,target_roles,target_grades,develops_skills,prerequisites,upcoming_sessions,position"},
+	"events":           {"event_id", "event_id,title,description,type,format,duration_hours,mandatory,target_roles,target_grades,develops_skills,prerequisites,upcoming_sessions,position"},
 	"activity_history": {"record_id", "record_id,employee_id,event_id,date,due_date,status,completion_pct,score,feedback_rating,assigned_by,demo,position"},
 }
 
@@ -183,14 +183,17 @@ func writeRows(ctx context.Context, tx *sql.Tx, table string, rows any) error {
 		value += " || jsonb_build_object('due_date', NULLIF(value->>'due_date', ''), 'demo', COALESCE((value->>'demo')::boolean, false))"
 	}
 	assignments := []string{}
+	projections := []string{}
 	for _, column := range strings.Split(spec.columns, ",") {
 		assignments = append(assignments, column+" = EXCLUDED."+column)
+		projections = append(projections, "entry."+column)
 	}
 	query := fmt.Sprintf(`INSERT INTO careerquest.%s AS stored (%s)
-		SELECT (jsonb_populate_record(NULL::careerquest.%s, %s)).*
+		SELECT %s
 		FROM jsonb_array_elements($1::jsonb) WITH ORDINALITY AS source(value, ordinality)
+		CROSS JOIN LATERAL jsonb_populate_record(NULL::careerquest.%s, %s) AS entry
 		ON CONFLICT (%s) DO UPDATE SET %s
-		WHERE stored IS DISTINCT FROM EXCLUDED`, table, spec.columns, table, value, spec.key, strings.Join(assignments, ","))
+		WHERE stored IS DISTINCT FROM EXCLUDED`, table, spec.columns, strings.Join(projections, ","), table, value, spec.key, strings.Join(assignments, ","))
 	_, err = tx.ExecContext(ctx, query, string(data))
 	if err != nil {
 		return fmt.Errorf("write %s: %w", table, err)
@@ -247,7 +250,10 @@ func loadPostgres(ctx context.Context, tx *sql.Tx) (model.Dataset, error) {
 	if d.Events, err = readRows[model.Event](ctx, tx, "events"); err != nil {
 		return d, err
 	}
-	d.History, err = readRows[model.Activity](ctx, tx, "activity_history")
+	if d.History, err = readRows[model.Activity](ctx, tx, "activity_history"); err != nil {
+		return d, err
+	}
+	d.Workflow, err = loadWorkflow(ctx, tx)
 	return d, err
 }
 
@@ -276,6 +282,9 @@ func (s *Store) savePostgres(next model.Dataset) error {
 		return err
 	}
 	if err = writeRows(ctx, tx, "activity_history", next.History); err != nil {
+		return err
+	}
+	if err = writeWorkflow(ctx, tx, next.Workflow); err != nil {
 		return err
 	}
 	return tx.Commit()

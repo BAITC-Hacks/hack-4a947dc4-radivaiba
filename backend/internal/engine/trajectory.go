@@ -72,14 +72,11 @@ func BuildProfile(d model.Dataset, employee model.Employee) model.Profile {
 		titles[e.ID] = e.Title
 	}
 	history := []model.HistoryItem{}
-	for _, r := range EmployeeHistory(d, employee.ID) {
+	activities := EmployeeHistory(d, employee.ID)
+	sortActivityHistory(d, activities)
+	for i := len(activities) - 1; i >= 0; i-- {
+		r := activities[i]
 		history = append(history, model.HistoryItem{Activity: r, EventTitle: titles[r.EventID]})
 	}
-	sort.Slice(history, func(i, j int) bool {
-		if history[i].Date == history[j].Date {
-			return history[i].ID > history[j].ID
-		}
-		return history[i].Date > history[j].Date
-	})
-	return model.Profile{Employee: employee, EffectiveSkills: levels, Trajectory: BuildTrajectory(d, employee, levels), History: history, AsOfDate: d.Catalog.Meta.AsOfDate, Revision: d.Revision}
+	return model.Profile{Employee: employee, EffectiveSkills: levels, Trajectory: BuildTrajectory(d, employee, levels), History: history, AsOfDate: BusinessDate(d), Revision: d.Revision}
 }

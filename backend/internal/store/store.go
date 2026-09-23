@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 	"sync"
@@ -21,10 +22,13 @@ var ErrNotEligible = errors.New("activity is not an available recommended step")
 var ErrPersistence = errors.New("cannot persist dataset")
 
 type Store struct {
-	mu   sync.RWMutex
-	data model.Dataset
-	path string
-	db   *sql.DB
+	mu           sync.RWMutex
+	data         model.Dataset
+	path         string
+	db           *sql.DB
+	businessDate string
+	liveNow      func() time.Time
+	businessZone *time.Location
 }
 type ImportResult struct {
 	EmployeesAdded   int   `json:"employees_added"`
@@ -61,7 +65,12 @@ func New(d model.Dataset, path string) (*Store, error) {
 }
 
 // Datasets are immutable after publication. Mutations replace slices instead of changing shared maps.
-func (s *Store) Snapshot() model.Dataset { s.mu.RLock(); defer s.mu.RUnlock(); return s.data }
+func (s *Store) Snapshot() model.Dataset {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return workflowView(s.data, s.businessDateAt(s.clockNow()))
+}
+func (s *Store) RawSnapshot() model.Dataset { s.mu.RLock(); defer s.mu.RUnlock(); return s.data }
 func (s *Store) Close() error {
 	if s.db != nil {
 		return s.db.Close()
@@ -196,6 +205,11 @@ func (s *Store) Import(employeeJSON, historyCSV []byte) (ImportResult, error) {
 				return result, err
 			}
 			if _, ok := byID[e.ID]; ok {
+				for _, en := range next.Workflow.Enrollments {
+					if en.EmployeeID == e.ID && (byID[e.ID].LastReviewDate != e.LastReviewDate || !reflect.DeepEqual(byID[e.ID].Skills, e.Skills)) {
+						return result, fmt.Errorf("employees.json %s: skill baseline of an employee with application work cannot be overwritten", e.ID)
+					}
+				}
 				result.EmployeesUpdated++
 			} else {
 				result.EmployeesAdded++
@@ -222,8 +236,8 @@ func (s *Store) Import(employeeJSON, historyCSV []byte) (ImportResult, error) {
 			if err := uniqueID(seen, r.ID, "activity_history.csv import"); err != nil {
 				return result, err
 			}
-			if strings.HasPrefix(r.ID, "DEMO_") {
-				return result, fmt.Errorf("activity_history.csv %s: DEMO_ prefix is reserved", r.ID)
+			if strings.HasPrefix(r.ID, "DEMO_") || strings.HasPrefix(r.ID, "APP_") {
+				return result, fmt.Errorf("activity_history.csv %s: application record prefix is reserved", r.ID)
 			}
 			if _, ok := byID[r.ID]; ok {
 				result.HistoryUpdated++

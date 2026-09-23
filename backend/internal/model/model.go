@@ -84,11 +84,13 @@ type Activity struct {
 	Demo           bool   `json:"demo,omitempty"`
 }
 type Dataset struct {
-	Catalog   Catalog    `json:"catalog"`
-	Employees []Employee `json:"employees"`
-	Events    []Event    `json:"events"`
-	History   []Activity `json:"history"`
-	Revision  int64      `json:"revision"`
+	Catalog      Catalog    `json:"catalog"`
+	Employees    []Employee `json:"employees"`
+	Events       []Event    `json:"events"`
+	History      []Activity `json:"history"`
+	Revision     int64      `json:"revision"`
+	Workflow     Workflow   `json:"workflow,omitempty"`
+	BusinessDate string     `json:"-"`
 }
 type SkillProgress struct {
 	SkillID  string `json:"skill_id"`

@@ -21,13 +21,15 @@ import (
 )
 
 type Server struct {
-	Store     *store.Store
-	Auth      *auth.Manager
-	LLM       *llm.Client
-	WebDir    string
-	DevOrigin string
-	rateMu    sync.Mutex
-	attempts  map[string]attempt
+	Store        *store.Store
+	Auth         *auth.Manager
+	LLM          *llm.Client
+	WebDir       string
+	DevOrigin    string
+	EvidenceDir  string
+	BuildVersion string
+	rateMu       sync.Mutex
+	attempts     map[string]attempt
 }
 type attempt struct {
 	Count int
@@ -65,7 +67,7 @@ func (s *Server) Handler() http.Handler {
 			return
 		}
 		d := s.Store.Snapshot()
-		send(w, 200, map[string]any{"status": "ok", "as_of_date": d.Catalog.Meta.AsOfDate, "revision": d.Revision})
+		send(w, 200, map[string]any{"status": "ok", "storage": "postgresql", "build_version": s.BuildVersion, "business_date": d.BusinessDate, "as_of_date": d.Catalog.Meta.AsOfDate, "revision": d.Revision})
 	})
 	mux.HandleFunc("POST /api/session", s.login)
 	mux.HandleFunc("GET /api/session", func(w http.ResponseWriter, r *http.Request) {
@@ -96,20 +98,25 @@ func (s *Server) Handler() http.Handler {
 		if !ok {
 			return
 		}
-		candidates := engine.RankCandidates(d, employee)
-		result := s.LLM.Recommend(r.Context(), candidates, d.Revision)
+		candidates := engine.RankCandidatesLocale(d, employee, requestLocale(r))
+		result := s.LLM.RecommendLocale(r.Context(), candidates, d.Revision, requestLocale(r))
 		if len(candidates) == 0 {
-			result.EmptyReason = engine.EmptyReason(d, employee)
+			result.EmptyReason = engine.EmptyReasonLocale(d, employee, requestLocale(r))
 		}
 		send(w, 200, result)
 	})
-	mux.HandleFunc("POST /api/employees/{id}/completions", s.complete)
+	mux.HandleFunc("POST /api/employees/{id}/completions", func(w http.ResponseWriter, r *http.Request) {
+		if _, _, ok := s.employee(w, r); ok {
+			fail(w, 410, "review_required", "Отправьте результат на проверку HR.")
+		}
+	})
 	mux.HandleFunc("GET /api/hr/overview", func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := s.require(w, r, "hr"); ok {
-			send(w, 200, engine.SummarizeHR(s.Store.Snapshot()))
+			send(w, 200, engine.SummarizeHRLocale(s.Store.Snapshot(), requestLocale(r)))
 		}
 	})
 	mux.HandleFunc("POST /api/hr/import", s.importData)
+	s.workflowRoutes(mux)
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
 		fail(w, 404, "not_found", "API маршрут не найден.")
 	})
@@ -145,6 +152,15 @@ func (s *Server) Handler() http.Handler {
 func oneScheme(s string) bool { return s == "http" || s == "https" }
 func (s *Server) require(w http.ResponseWriter, r *http.Request, role string) (auth.Session, bool) {
 	session, ok := s.Auth.Get(r)
+	if ok {
+		account, active := s.Store.Account(session.AccountID)
+		ok = active
+		if active {
+			session.Locale = account.Locale
+			session.Role = account.Role
+			session.EmployeeID = account.EmployeeID
+		}
+	}
 	if !ok {
 		fail(w, 401, "unauthorized", "Войдите в демо-аккаунт.")
 		return session, false
@@ -193,20 +209,18 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var input struct {
-		Role     string `json:"role"`
+		Login    string `json:"login"`
 		Password string `json:"password"`
 	}
 	if !readJSON(w, r, &input) {
 		return
 	}
-	if !s.Auth.Login(w, input.Role, input.Password) {
+	account, valid := s.Store.Authenticate(input.Login, input.Password)
+	if !valid {
 		fail(w, 401, "invalid_credentials", "Неверный пароль демо-аккаунта.")
 		return
 	}
-	session := auth.Session{Role: input.Role}
-	if input.Role == "employee" {
-		session.EmployeeID = s.Auth.EmployeeID
-	}
+	session := s.Auth.LoginAccount(w, account)
 	send(w, 200, session)
 }
 func (s *Server) complete(w http.ResponseWriter, r *http.Request) {
@@ -283,7 +297,11 @@ func (s *Server) importData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		fail(w, 422, "invalid_dataset", err.Error())
+		message:=err.Error();file,record,reason:="dataset","",message
+		for _,candidate:=range []string{"employees.json","activity_history.csv","skills.json","events.json"} {
+			if strings.HasPrefix(message,candidate) {file=candidate;rest:=strings.TrimSpace(strings.TrimPrefix(message,candidate));if before,after,found:=strings.Cut(rest,":");found{record=strings.TrimSpace(before);reason=strings.TrimSpace(after)};break}
+		}
+		send(w,422,map[string]any{"error":map[string]any{"code":"invalid_dataset","message":message,"details":[]map[string]string{{"file":file,"record":record,"reason":reason}}}})
 		return
 	}
 	send(w, 200, result)

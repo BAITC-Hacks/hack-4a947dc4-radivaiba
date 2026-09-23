@@ -28,6 +28,8 @@ try {
   }
   await mkdir(join(root, 'data/seed'), { recursive: true });
   await mkdir(join(root, 'data/runtime'), { recursive: true });
+  await mkdir(join(root, 'data/evidence'), { recursive: true, mode: 0o700 });
+  await mkdir(join(root, 'data/credentials'), { recursive: true, mode: 0o700 });
   for (const [name, bytes] of prepared) await writeFile(join(root, 'data/seed', name), bytes);
   let envText;
   try {
@@ -47,12 +49,12 @@ try {
       : `${envText.trimEnd()}\n${line}\n`;
     env[key] = value;
   }
-  setDefault('DEMO_EMPLOYEE_PASSWORD', randomBytes(8).toString('hex'));
-  setDefault('DEMO_HR_PASSWORD', randomBytes(8).toString('hex'));
   setDefault('POSTGRES_DB', 'careerquest');
   setDefault('POSTGRES_USER', 'careerquest');
   setDefault('POSTGRES_PASSWORD', randomBytes(24).toString('hex'));
   setDefault('POSTGRES_PORT', '5433');
+  setDefault('EVIDENCE_DIR', 'data/evidence');
+  setDefault('ORG_TIMEZONE', 'Asia/Qyzylorda');
   setDefault(
     'DATABASE_URL',
     `postgresql://${encodeURIComponent(env.POSTGRES_USER)}:${encodeURIComponent(env.POSTGRES_PASSWORD)}@127.0.0.1:${env.POSTGRES_PORT}/${encodeURIComponent(env.POSTGRES_DB)}?sslmode=disable`,
@@ -75,10 +77,13 @@ try {
   }
   await finished(run('npm', [hasLock ? 'ci' : 'install']));
   console.log(
-    '\nSetup complete. Start PostgreSQL: docker compose up -d postgres. Then run npm run demo.',
+    '\nSetup complete. Start PostgreSQL: docker compose up -d --wait postgres. For a new installation run npm run accounts:provision, then npm run demo.',
   );
   console.log(
     'Existing database data and configured .env values were preserved. Seed and .env are excluded from Git.',
+  );
+  console.log(
+    'Upgrading the old JSON demo? Back up its runtime volume and run migrate:legacy before provisioning or starting the new server. See docs/OPERATIONS.md.',
   );
 } catch (error) {
   console.error(error.message);

@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
   title: Career Quest API
-  version: 1.0.0
-  description: Local demo. Session cookies enforce employee/HR access. Snapshot date comes from the dataset, not the system clock.
+  version: 2.0.0
+  description: Local demo. Session cookies enforce employee/HR access. Demo business date defaults to the dataset; HR approval alone awards progress and EXP. Accept-Language selects ru/kk/en.
 servers:
   - url: /api
 security:
@@ -21,6 +21,9 @@ paths:
                 required: [status, as_of_date, revision]
                 properties:
                   status: { type: string, enum: [ok] }
+                  storage: { type: string, enum: [postgresql] }
+                  build_version: { type: string }
+                  business_date: { type: string, format: date }
                   as_of_date: { type: string, format: date }
                   revision: { type: integer }
         '503': { $ref: '#/components/responses/Error' }
@@ -33,10 +36,11 @@ paths:
           application/json:
             schema:
               type: object
-              required: [role, password]
+              required: [login, password]
               additionalProperties: false
               properties:
-                role: { type: string, enum: [employee, hr] }
+                login:
+                  { type: string, description: Individual account login (employee ID or HR login) }
                 password: { type: string, format: password }
       responses:
         '200':
@@ -103,32 +107,11 @@ paths:
     parameters:
       - { $ref: '#/components/parameters/EmployeeID' }
     post:
-      description: Demo completion at as_of_date. Only useful eligible activities. Idempotent per employee/event, or employee/event/date for EV_036. Persistence succeeds before response.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              required: [event_id]
-              properties:
-                event_id: { type: string }
+      deprecated: true
+      description: Self-completion is disabled. Submit evidence and wait for HR approval.
       responses:
-        '200':
-          description: Updated profile; changed=false for an already completed occurrence
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [profile, changed]
-                properties:
-                  profile: { $ref: '#/components/schemas/Profile' }
-                  changed: { type: boolean }
+        '410': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
-        '404': { $ref: '#/components/responses/Error' }
-        '409': { $ref: '#/components/responses/Error' }
-        '500': { $ref: '#/components/responses/Error' }
   /hr/overview:
     get:
       description: HR only; computed without LLM calls
@@ -141,7 +124,7 @@ paths:
         '403': { $ref: '#/components/responses/Error' }
   /hr/import:
     post:
-      description: HR only. At least one file, max 12 MiB request. Employees envelope matches starter kit, same as_of_date. Upsert by employee_id and record_id. Atomic validation of the merged dataset. DEMO_ record prefix reserved.
+      description: HR only. At least one file, max 12 MiB request. Employees envelope matches starter kit, same as_of_date. Upsert by employee_id and record_id. Atomic validation of the merged dataset. Application-owned record IDs and DEMO_ prefixes are reserved. Imports do not issue account credentials or EXP.
       requestBody:
         required: true
         content:
@@ -171,6 +154,587 @@ paths:
         '422': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
         '500': { $ref: '#/components/responses/Error' }
+  /catalog/goals:
+    {
+      'get':
+        {
+          'description': 'Allowed role/grade pairs. Authenticated.',
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Successful result',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              'type': 'object',
+                              'properties':
+                                {
+                                  'items':
+                                    {
+                                      'type': 'array',
+                                      'items': { '$ref': '#/components/schemas/Goal' },
+                                    },
+                                },
+                              'required': ['items'],
+                            },
+                        },
+                    },
+                },
+              '400': { '$ref': '#/components/responses/Error' },
+              '401': { '$ref': '#/components/responses/Error' },
+              '403': { '$ref': '#/components/responses/Error' },
+              '404': { '$ref': '#/components/responses/Error' },
+              '409': { '$ref': '#/components/responses/Error' },
+            },
+        },
+    }
+  /me/preferences:
+    {
+      'patch':
+        {
+          'description': 'Persist the current account language. Role and employee binding cannot be changed here.',
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Successful result',
+                  'content':
+                    {
+                      'application/json': { 'schema': { '$ref': '#/components/schemas/Session' } },
+                    },
+                },
+              '400': { '$ref': '#/components/responses/Error' },
+              '401': { '$ref': '#/components/responses/Error' },
+              '403': { '$ref': '#/components/responses/Error' },
+              '404': { '$ref': '#/components/responses/Error' },
+              '409': { '$ref': '#/components/responses/Error' },
+            },
+          'requestBody':
+            {
+              'required': true,
+              'content':
+                {
+                  'application/json':
+                    {
+                      'schema':
+                        {
+                          'type': 'object',
+                          'properties':
+                            { 'locale': { 'type': 'string', 'enum': ['ru', 'kk', 'en'] } },
+                          'required': ['locale'],
+                        },
+                    },
+                },
+            },
+        },
+    }
+  /employees/{id}/goal:
+    {
+      'patch':
+        {
+          'description': 'Owner or HR. Explicit null restores inferred next-grade goal; existing work and EXP are preserved.',
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Successful result',
+                  'content':
+                    {
+                      'application/json': { 'schema': { '$ref': '#/components/schemas/Profile' } },
+                    },
+                },
+              '400': { '$ref': '#/components/responses/Error' },
+              '401': { '$ref': '#/components/responses/Error' },
+              '403': { '$ref': '#/components/responses/Error' },
+              '404': { '$ref': '#/components/responses/Error' },
+              '409': { '$ref': '#/components/responses/Error' },
+            },
+          'parameters':
+            [{ 'name': 'id', 'in': 'path', 'required': true, 'schema': { 'type': 'string' } }],
+          'requestBody':
+            {
+              'required': true,
+              'content':
+                {
+                  'application/json':
+                    {
+                      'schema':
+                        {
+                          'type': 'object',
+                          'properties':
+                            {
+                              'goal':
+                                {
+                                  'nullable': true,
+                                  'allOf': [{ '$ref': '#/components/schemas/Goal' }],
+                                },
+                            },
+                          'required': ['goal'],
+                        },
+                    },
+                },
+            },
+        },
+    }
+  /employees/{id}/development:
+    {
+      'get':
+        {
+          'description': 'Owner or HR. Tree modules, server-computed states, expected gains, experience and business date.',
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Successful result',
+                  'content':
+                    {
+                      'application/json':
+                        { 'schema': { '$ref': '#/components/schemas/Development' } },
+                    },
+                },
+              '400': { '$ref': '#/components/responses/Error' },
+              '401': { '$ref': '#/components/responses/Error' },
+              '403': { '$ref': '#/components/responses/Error' },
+              '404': { '$ref': '#/components/responses/Error' },
+              '409': { '$ref': '#/components/responses/Error' },
+            },
+          'parameters':
+            [{ 'name': 'id', 'in': 'path', 'required': true, 'schema': { 'type': 'string' } }],
+        },
+    }
+  /employees/{id}/modules/{event_id}/start:
+    {
+      'post':
+        {
+          'description': 'Profile owner starts an eligible module; freezes criteria/reward. Repeat calls reuse the occurrence.',
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Successful result',
+                  'content':
+                    {
+                      'application/json':
+                        { 'schema': { '$ref': '#/components/schemas/EnrollmentDetail' } },
+                    },
+                },
+              '400': { '$ref': '#/components/responses/Error' },
+              '401': { '$ref': '#/components/responses/Error' },
+              '403': { '$ref': '#/components/responses/Error' },
+              '404': { '$ref': '#/components/responses/Error' },
+              '409': { '$ref': '#/components/responses/Error' },
+            },
+          'parameters':
+            [
+              { 'name': 'id', 'in': 'path', 'required': true, 'schema': { 'type': 'string' } },
+              {
+                'name': 'event_id',
+                'in': 'path',
+                'required': true,
+                'schema': { 'type': 'string' },
+              },
+            ],
+        },
+    }
+  /enrollments/{id}:
+    {
+      'get':
+        {
+          'description': 'Owner or HR. Immutable submitted versions and review history; no private storage paths.',
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Successful result',
+                  'content':
+                    {
+                      'application/json':
+                        { 'schema': { '$ref': '#/components/schemas/EnrollmentDetail' } },
+                    },
+                },
+              '400': { '$ref': '#/components/responses/Error' },
+              '401': { '$ref': '#/components/responses/Error' },
+              '403': { '$ref': '#/components/responses/Error' },
+              '404': { '$ref': '#/components/responses/Error' },
+              '409': { '$ref': '#/components/responses/Error' },
+            },
+          'parameters':
+            [{ 'name': 'id', 'in': 'path', 'required': true, 'schema': { 'type': 'string' } }],
+        },
+    }
+  /enrollments/{id}/submissions:
+    {
+      'post':
+        {
+          'description': 'Owner only. Result text, HTTP(S) URL and/or up to 3 PDF/PNG/JPEG files of 5 MiB each. Request max 16 MiB; request_key makes retries idempotent. A text-only result needs at least 10 characters.',
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Successful result',
+                  'content':
+                    {
+                      'application/json':
+                        { 'schema': { '$ref': '#/components/schemas/SubmissionDetail' } },
+                    },
+                },
+              '400': { '$ref': '#/components/responses/Error' },
+              '401': { '$ref': '#/components/responses/Error' },
+              '403': { '$ref': '#/components/responses/Error' },
+              '404': { '$ref': '#/components/responses/Error' },
+              '409': { '$ref': '#/components/responses/Error' },
+            },
+          'parameters':
+            [{ 'name': 'id', 'in': 'path', 'required': true, 'schema': { 'type': 'string' } }],
+          'requestBody':
+            {
+              'required': true,
+              'content':
+                {
+                  'application/json':
+                    {
+                      'schema':
+                        {
+                          'type': 'object',
+                          'properties':
+                            {
+                              'text': { 'type': 'string', 'maxLength': 12000 },
+                              'url': { 'type': 'string', 'maxLength': 2048 },
+                              'request_key': { 'type': 'string', 'minLength': 8, 'maxLength': 100 },
+                            },
+                          'required': ['request_key'],
+                        },
+                    },
+                  'multipart/form-data':
+                    {
+                      'schema':
+                        {
+                          'type': 'object',
+                          'properties':
+                            {
+                              'text': { 'type': 'string', 'maxLength': 12000 },
+                              'url': { 'type': 'string', 'maxLength': 2048 },
+                              'request_key': { 'type': 'string', 'minLength': 8, 'maxLength': 100 },
+                              'files':
+                                {
+                                  'type': 'array',
+                                  'maxItems': 3,
+                                  'items': { 'type': 'string', 'format': 'binary' },
+                                },
+                            },
+                          'required': ['request_key'],
+                        },
+                    },
+                },
+            },
+        },
+    }
+  /hr/submissions:
+    {
+      'get':
+        {
+          'description': 'HR only. Review queue; pending_count is the total pending count before filtering.',
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Successful result',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              'type': 'object',
+                              'properties':
+                                {
+                                  'items':
+                                    {
+                                      'type': 'array',
+                                      'items': { '$ref': '#/components/schemas/SubmissionDetail' },
+                                    },
+                                  'pending_count': { 'type': 'integer' },
+                                },
+                              'required': ['items', 'pending_count'],
+                            },
+                        },
+                    },
+                },
+              '400': { '$ref': '#/components/responses/Error' },
+              '401': { '$ref': '#/components/responses/Error' },
+              '403': { '$ref': '#/components/responses/Error' },
+              '404': { '$ref': '#/components/responses/Error' },
+              '409': { '$ref': '#/components/responses/Error' },
+            },
+          'parameters':
+            [
+              {
+                'name': 'status',
+                'in': 'query',
+                'required': false,
+                'schema':
+                  {
+                    'type': 'string',
+                    'enum': ['pending', 'changes_requested', 'completed', 'revoked'],
+                  },
+              },
+              {
+                'name': 'employee_id',
+                'in': 'query',
+                'required': false,
+                'schema': { 'type': 'string' },
+              },
+              {
+                'name': 'event_id',
+                'in': 'query',
+                'required': false,
+                'schema': { 'type': 'string' },
+              },
+              {
+                'name': 'from',
+                'in': 'query',
+                'required': false,
+                'schema': { 'type': 'string', 'format': 'date' },
+              },
+              {
+                'name': 'to',
+                'in': 'query',
+                'required': false,
+                'schema': { 'type': 'string', 'format': 'date' },
+              },
+            ],
+        },
+    }
+  /hr/submissions/{id}/decision:
+    {
+      'post':
+        {
+          'description': 'HR only; self-review forbidden. Pending version is represented by immutable submission ID. Decision, completion, EXP and revision commit atomically. Return needs nonblank comment.',
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Successful result',
+                  'content':
+                    {
+                      'application/json':
+                        { 'schema': { '$ref': '#/components/schemas/SubmissionDetail' } },
+                    },
+                },
+              '400': { '$ref': '#/components/responses/Error' },
+              '401': { '$ref': '#/components/responses/Error' },
+              '403': { '$ref': '#/components/responses/Error' },
+              '404': { '$ref': '#/components/responses/Error' },
+              '409': { '$ref': '#/components/responses/Error' },
+            },
+          'parameters':
+            [{ 'name': 'id', 'in': 'path', 'required': true, 'schema': { 'type': 'string' } }],
+          'requestBody':
+            {
+              'required': true,
+              'content':
+                {
+                  'application/json':
+                    {
+                      'schema':
+                        {
+                          'type': 'object',
+                          'properties':
+                            {
+                              'action': { 'type': 'string', 'enum': ['approve', 'return'] },
+                              'comment': { 'type': 'string', 'maxLength': 4000 },
+                              'request_key': { 'type': 'string', 'minLength': 8, 'maxLength': 100 },
+                            },
+                          'required': ['action', 'request_key'],
+                        },
+                    },
+                },
+            },
+        },
+    }
+  /hr/approvals/{id}/revoke:
+    {
+      'post':
+        {
+          'description': 'HR only. Adds reversal audit and original-month EXP correction without deleting history.',
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Successful result',
+                  'content':
+                    {
+                      'application/json':
+                        { 'schema': { '$ref': '#/components/schemas/SubmissionDetail' } },
+                    },
+                },
+              '400': { '$ref': '#/components/responses/Error' },
+              '401': { '$ref': '#/components/responses/Error' },
+              '403': { '$ref': '#/components/responses/Error' },
+              '404': { '$ref': '#/components/responses/Error' },
+              '409': { '$ref': '#/components/responses/Error' },
+            },
+          'parameters':
+            [{ 'name': 'id', 'in': 'path', 'required': true, 'schema': { 'type': 'string' } }],
+          'requestBody':
+            {
+              'required': true,
+              'content':
+                {
+                  'application/json':
+                    {
+                      'schema':
+                        {
+                          'type': 'object',
+                          'properties':
+                            {
+                              'comment': { 'type': 'string', 'minLength': 1, 'maxLength': 4000 },
+                              'request_key': { 'type': 'string', 'minLength': 8, 'maxLength': 100 },
+                            },
+                          'required': ['comment', 'request_key'],
+                        },
+                    },
+                },
+            },
+        },
+    }
+  /employees/{id}/experience:
+    {
+      'get':
+        {
+          'description': 'Owner or HR. Selected month defaults to business date; total EXP and tree never reset monthly.',
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Successful result',
+                  'content':
+                    {
+                      'application/json':
+                        { 'schema': { '$ref': '#/components/schemas/Experience' } },
+                    },
+                },
+              '400': { '$ref': '#/components/responses/Error' },
+              '401': { '$ref': '#/components/responses/Error' },
+              '403': { '$ref': '#/components/responses/Error' },
+              '404': { '$ref': '#/components/responses/Error' },
+              '409': { '$ref': '#/components/responses/Error' },
+            },
+          'parameters':
+            [
+              { 'name': 'id', 'in': 'path', 'required': true, 'schema': { 'type': 'string' } },
+              {
+                'name': 'month',
+                'in': 'query',
+                'required': false,
+                'schema': { 'type': 'string', 'pattern': '^[0-9]{4}-[0-9]{2}$' },
+              },
+            ],
+        },
+    }
+  /leaderboard:
+    {
+      'get':
+        {
+          'description': 'Authenticated. Employee output includes only full_name/rank/exp. HR output adds employee_id/department/role and supports filters. Equal EXP shares rank; zero EXP is omitted.',
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Successful result',
+                  'content':
+                    {
+                      'application/json':
+                        { 'schema': { '$ref': '#/components/schemas/Leaderboard' } },
+                    },
+                },
+              '400': { '$ref': '#/components/responses/Error' },
+              '401': { '$ref': '#/components/responses/Error' },
+              '403': { '$ref': '#/components/responses/Error' },
+              '404': { '$ref': '#/components/responses/Error' },
+              '409': { '$ref': '#/components/responses/Error' },
+            },
+          'parameters':
+            [
+              {
+                'name': 'month',
+                'in': 'query',
+                'required': false,
+                'schema': { 'type': 'string', 'pattern': '^[0-9]{4}-[0-9]{2}$' },
+              },
+              {
+                'name': 'department',
+                'in': 'query',
+                'required': false,
+                'schema': { 'type': 'string' },
+              },
+              { 'name': 'role', 'in': 'query', 'required': false, 'schema': { 'type': 'string' } },
+            ],
+        },
+    }
+  /employees/{id}/assistant:
+    {
+      'post':
+        {
+          'description': 'Owner or HR. Motivational support, no completion or EXP; proofs and employee names are not sent to LLM.',
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Successful result',
+                  'content':
+                    {
+                      'application/json':
+                        { 'schema': { '$ref': '#/components/schemas/AssistantResponse' } },
+                    },
+                },
+              '400': { '$ref': '#/components/responses/Error' },
+              '401': { '$ref': '#/components/responses/Error' },
+              '403': { '$ref': '#/components/responses/Error' },
+              '404': { '$ref': '#/components/responses/Error' },
+              '409': { '$ref': '#/components/responses/Error' },
+            },
+          'parameters':
+            [{ 'name': 'id', 'in': 'path', 'required': true, 'schema': { 'type': 'string' } }],
+          'requestBody':
+            {
+              'required': true,
+              'content':
+                {
+                  'application/json':
+                    { 'schema': { '$ref': '#/components/schemas/AssistantRequest' } },
+                },
+            },
+        },
+    }
+  /attachments/{id}:
+    {
+      'get':
+        {
+          'description': 'Owner or HR only. Private PDF/PNG/JPEG download; Content-Disposition attachment and nosniff.',
+          'parameters':
+            [{ 'name': 'id', 'in': 'path', 'required': true, 'schema': { 'type': 'string' } }],
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Attachment bytes',
+                  'content':
+                    {
+                      'application/octet-stream':
+                        { 'schema': { 'type': 'string', 'format': 'binary' } },
+                    },
+                },
+              '401': { '$ref': '#/components/responses/Error' },
+              '403': { '$ref': '#/components/responses/Error' },
+              '404': { '$ref': '#/components/responses/Error' },
+            },
+        },
+    }
 components:
   securitySchemes:
     sessionCookie:
@@ -201,10 +765,14 @@ components:
   schemas:
     Session:
       type: object
-      required: [role, employee_id]
+      required: [account_id, login, locale, role, employee_id]
       properties:
+        account_id: { type: string }
+        login: { type: string }
+        locale: { type: string, enum: [ru, kk, en] }
         role: { type: string, enum: [employee, hr] }
-        employee_id: { type: string, description: Empty for HR }
+        employee_id:
+          { type: string, description: Bound profile ID; HR may have no employee binding }
     Goal:
       type: object
       required: [target_role, target_grade]
@@ -323,6 +891,7 @@ components:
           event_id,
           title,
           description,
+          description,
           type,
           format,
           duration_hours,
@@ -336,6 +905,7 @@ components:
       properties:
         event_id: { type: string }
         title: { type: string }
+        description: { type: string }
         description: { type: string }
         type: { type: string }
         format: { type: string, enum: [online, offline, self_paced] }
@@ -450,3 +1020,328 @@ components:
               total: { type: integer }
               completed: { type: integer }
               statuses: { type: object, additionalProperties: { type: integer } }
+    ModuleConfig:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'event_id': { 'type': 'string' },
+            'version': { 'type': 'integer' },
+            'outcome': { 'type': 'object', 'additionalProperties': { 'type': 'string' } },
+            'criteria':
+              {
+                'type': 'object',
+                'additionalProperties': { 'type': 'array', 'items': { 'type': 'string' } },
+              },
+            'reward_exp': { 'type': 'integer' },
+            'repeat_policy': { 'type': 'string' },
+          },
+        'required': ['event_id', 'version', 'outcome', 'criteria', 'reward_exp', 'repeat_policy'],
+      }
+    Enrollment:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'id': { 'type': 'string' },
+            'employee_id': { 'type': 'string' },
+            'event_id': { 'type': 'string' },
+            'occurrence': { 'type': 'string' },
+            'config': { '$ref': '#/components/schemas/ModuleConfig' },
+            'state':
+              {
+                'type': 'string',
+                'enum': ['in_progress', 'pending', 'changes_requested', 'completed'],
+              },
+            'started_at': { 'type': 'string' },
+            'business_date': { 'type': 'string' },
+            'completion_id': { 'type': 'string' },
+          },
+        'required':
+          [
+            'id',
+            'employee_id',
+            'event_id',
+            'occurrence',
+            'config',
+            'state',
+            'started_at',
+            'business_date',
+          ],
+      }
+    Attachment:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'id': { 'type': 'string' },
+            'submission_id': { 'type': 'string' },
+            'filename': { 'type': 'string' },
+            'media_type': { 'type': 'string' },
+            'size': { 'type': 'integer', 'format': 'int64' },
+            'sha256': { 'type': 'string' },
+          },
+        'required': ['id', 'submission_id', 'filename', 'media_type', 'size', 'sha256'],
+      }
+    Submission:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'id': { 'type': 'string' },
+            'enrollment_id': { 'type': 'string' },
+            'version': { 'type': 'integer' },
+            'text': { 'type': 'string' },
+            'url': { 'type': 'string' },
+            'attachments':
+              { 'type': 'array', 'items': { '$ref': '#/components/schemas/Attachment' } },
+            'status':
+              {
+                'type': 'string',
+                'enum': ['pending', 'changes_requested', 'completed', 'revoked'],
+              },
+            'submitted_at': { 'type': 'string' },
+            'business_date': { 'type': 'string' },
+            'request_key': { 'type': 'string' },
+          },
+        'required':
+          [
+            'id',
+            'enrollment_id',
+            'version',
+            'text',
+            'url',
+            'attachments',
+            'status',
+            'submitted_at',
+            'business_date',
+          ],
+      }
+    ReviewDecision:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'id': { 'type': 'string' },
+            'submission_id': { 'type': 'string' },
+            'enrollment_id': { 'type': 'string' },
+            'reviewer_id': { 'type': 'string' },
+            'reviewer_login':
+              {
+                'type': 'string',
+                'description': 'Optional account login derived for display; reviewer_id is the immutable audit identity.',
+              },
+            'action': { 'type': 'string' },
+            'comment': { 'type': 'string' },
+            'recorded_at': { 'type': 'string' },
+            'business_date': { 'type': 'string' },
+            'request_key': { 'type': 'string' },
+            'reversal_of': { 'type': 'string' },
+            'completion_id': { 'type': 'string' },
+          },
+        'required':
+          [
+            'id',
+            'submission_id',
+            'enrollment_id',
+            'reviewer_id',
+            'action',
+            'comment',
+            'recorded_at',
+            'business_date',
+            'request_key',
+          ],
+      }
+    ExpEntry:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'id': { 'type': 'string' },
+            'employee_id': { 'type': 'string' },
+            'event_id': { 'type': 'string' },
+            'approval_id': { 'type': 'string' },
+            'amount': { 'type': 'integer' },
+            'month': { 'type': 'string' },
+            'recorded_at': { 'type': 'string' },
+            'reversal_of': { 'type': 'string' },
+          },
+        'required':
+          ['id', 'employee_id', 'event_id', 'approval_id', 'amount', 'month', 'recorded_at'],
+      }
+    Experience:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'month': { 'type': 'string' },
+            'monthly_exp': { 'type': 'integer' },
+            'total_exp': { 'type': 'integer' },
+            'tree_level': { 'type': 'integer' },
+            'energy': { 'type': 'integer' },
+            'entries': { 'type': 'array', 'items': { '$ref': '#/components/schemas/ExpEntry' } },
+          },
+        'required': ['month', 'monthly_exp', 'total_exp', 'tree_level', 'energy', 'entries'],
+      }
+    ModuleView:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'event': { '$ref': '#/components/schemas/Event' },
+            'config': { '$ref': '#/components/schemas/ModuleConfig' },
+            'state':
+              {
+                'type': 'string',
+                'enum':
+                  [
+                    'available',
+                    'locked',
+                    'in_progress',
+                    'pending',
+                    'changes_requested',
+                    'completed',
+                  ],
+              },
+            'recommended': { 'type': 'boolean' },
+            'blocked_reason': { 'type': 'string' },
+            'branch': { 'type': 'string' },
+            'category': { 'type': 'string' },
+            'expected_gains':
+              { 'type': 'array', 'items': { '$ref': '#/components/schemas/ExpectedGain' } },
+            'enrollment':
+              { 'nullable': true, 'allOf': [{ '$ref': '#/components/schemas/Enrollment' }] },
+          },
+        'required':
+          [
+            'event',
+            'config',
+            'state',
+            'recommended',
+            'blocked_reason',
+            'branch',
+            'category',
+            'expected_gains',
+            'enrollment',
+          ],
+      }
+    Development:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'items': { 'type': 'array', 'items': { '$ref': '#/components/schemas/ModuleView' } },
+            'experience': { '$ref': '#/components/schemas/Experience' },
+            'business_date': { 'type': 'string' },
+            'revision': { 'type': 'integer', 'format': 'int64' },
+          },
+        'required': ['items', 'experience', 'business_date', 'revision'],
+      }
+    SubmissionDetail:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'submission': { '$ref': '#/components/schemas/Submission' },
+            'enrollment': { '$ref': '#/components/schemas/Enrollment' },
+            'employee': { '$ref': '#/components/schemas/Employee' },
+            'event': { '$ref': '#/components/schemas/Event' },
+            'versions': { 'type': 'array', 'items': { '$ref': '#/components/schemas/Submission' } },
+            'decisions':
+              { 'type': 'array', 'items': { '$ref': '#/components/schemas/ReviewDecision' } },
+          },
+        'required': ['submission', 'enrollment', 'employee', 'event', 'versions', 'decisions'],
+      }
+    EnrollmentDetail:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'enrollment': { '$ref': '#/components/schemas/Enrollment' },
+            'event': { '$ref': '#/components/schemas/Event' },
+            'versions': { 'type': 'array', 'items': { '$ref': '#/components/schemas/Submission' } },
+            'decisions':
+              { 'type': 'array', 'items': { '$ref': '#/components/schemas/ReviewDecision' } },
+          },
+        'required': ['enrollment', 'event', 'versions', 'decisions'],
+      }
+    LeaderboardEntry:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'rank': { 'type': 'integer' },
+            'full_name': { 'type': 'string' },
+            'exp': { 'type': 'integer' },
+            'employee_id': { 'type': 'string' },
+            'department': { 'type': 'string' },
+            'role': { 'type': 'string' },
+          },
+        'required': ['rank', 'full_name', 'exp'],
+      }
+    Leaderboard:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'month': { 'type': 'string' },
+            'months': { 'type': 'array', 'items': { 'type': 'string' } },
+            'items':
+              { 'type': 'array', 'items': { '$ref': '#/components/schemas/LeaderboardEntry' } },
+          },
+        'required': ['month', 'months', 'items'],
+      }
+    AssistantRequest:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'event_id': { 'type': 'string' },
+            'action':
+              {
+                'type': 'string',
+                'enum': ['why', 'fifteen_minutes', 'simplify', 'alternative', 'start'],
+              },
+            'locale': { 'type': 'string', 'enum': ['ru', 'kk', 'en'] },
+          },
+        'required': ['event_id', 'action'],
+      }
+    AssistantResponse:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'benefit': { 'type': 'string' },
+            'first_step': { 'type': 'string' },
+            'application': { 'type': 'string' },
+            'mode': { 'type': 'string' },
+            'notice': { 'type': 'string' },
+            'evidence': { 'type': 'array', 'items': { '$ref': '#/components/schemas/Evidence' } },
+            'alternative_event_id': { 'type': 'string' },
+          },
+        'required': ['benefit', 'first_step', 'application', 'mode', 'notice', 'evidence'],
+      }
+    Evidence:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'id': { 'type': 'string' },
+            'factor': { 'type': 'string' },
+            'text': { 'type': 'string' },
+          },
+        'required': ['id', 'factor', 'text'],
+      }
+    ExpectedGain:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'skill_id': { 'type': 'string' },
+            'name': { 'type': 'string' },
+            'before': { 'type': 'integer' },
+            'after': { 'type': 'integer' },
+            'required': { 'type': 'integer' },
+          },
+        'required': ['skill_id', 'name', 'before', 'after', 'required'],
+      }

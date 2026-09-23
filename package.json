@@ -13,6 +13,8 @@
     "demo": "node scripts/run.mjs demo",
     "dev": "node scripts/run.mjs dev",
     "credentials": "node scripts/credentials.mjs",
+    "migrate:legacy": "node scripts/admin.mjs migrate-legacy",
+    "accounts:provision": "node scripts/admin.mjs provision-accounts",
     "build": "npm run build --workspace frontend",
     "typecheck": "npm run typecheck --workspace frontend",
     "test": "go -C backend test ./...",

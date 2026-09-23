@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"careerquest/internal/auth"
-	"careerquest/internal/engine"
 	"careerquest/internal/httpapi"
 	"careerquest/internal/llm"
 	"careerquest/internal/store"
@@ -18,7 +17,10 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	_ "time/tzdata"
 )
+
+var buildVersion = "dev"
 
 func env(name, fallback string) string {
 	if value := os.Getenv(name); value != "" {
@@ -69,16 +71,27 @@ func main() {
 		log.Fatalf("Cannot open PostgreSQL dataset: %v", err)
 	}
 	defer data.Close()
-	employeePassword, hrPassword := os.Getenv("DEMO_EMPLOYEE_PASSWORD"), os.Getenv("DEMO_HR_PASSWORD")
-	if employeePassword == "" || hrPassword == "" || employeePassword == hrPassword {
-		log.Fatal("Set separate DEMO_EMPLOYEE_PASSWORD and DEMO_HR_PASSWORD in .env (npm run setup generates them).")
+	zoneName := env("ORG_TIMEZONE", "Asia/Qyzylorda")
+	_, err = time.LoadLocation(zoneName)
+	if err != nil {
+		log.Fatal("Invalid ORG_TIMEZONE")
 	}
-	employeeID := env("DEMO_EMPLOYEE_ID", "E0001")
-	if _, ok := engine.FindEmployee(data.Snapshot(), employeeID); !ok {
-		log.Fatal("DEMO_EMPLOYEE_ID is missing in dataset")
+	if env("APP_MODE", "demo") == "live" {
+		err = data.ConfigureLiveClock(zoneName, nil)
+	} else {
+		err = data.SetBusinessDate(env("DEMO_DATE", data.Snapshot().Catalog.Meta.AsOfDate))
+	}
+	if err != nil {
+		log.Fatalf("Business calendar: %v", err)
+	}
+	if err = data.EnsureConfigs(); err != nil {
+		log.Fatalf("Module configuration: %v", err)
+	}
+	if len(data.Snapshot().Workflow.Accounts) == 0 {
+		log.Print("No accounts yet. Run npm run accounts:provision, then restart the server.")
 	}
 	timeout, _ := strconv.Atoi(env("LLM_TIMEOUT_MS", "8000"))
-	api := &httpapi.Server{Store: data, Auth: auth.New(employeeID, employeePassword, hrPassword), LLM: &llm.Client{BaseURL: env("LLM_BASE_URL", "https://api.openai.com/v1"), Model: os.Getenv("LLM_MODEL"), APIKey: os.Getenv("LLM_API_KEY"), Timeout: time.Duration(timeout) * time.Millisecond}, WebDir: env("WEB_DIR", "frontend/dist"), DevOrigin: os.Getenv("DEV_ORIGIN")}
+	api := &httpapi.Server{Store: data, Auth: auth.New("", "", ""), LLM: &llm.Client{BaseURL: env("LLM_BASE_URL", "https://api.openai.com/v1"), Model: os.Getenv("LLM_MODEL"), APIKey: os.Getenv("LLM_API_KEY"), Timeout: time.Duration(timeout) * time.Millisecond}, WebDir: env("WEB_DIR", "frontend/dist"), DevOrigin: os.Getenv("DEV_ORIGIN"), EvidenceDir: env("EVIDENCE_DIR", "data/evidence"), BuildVersion: env("BUILD_VERSION", buildVersion)}
 	server := &http.Server{Addr: net.JoinHostPort(env("HOST", "127.0.0.1"), env("PORT", "8080")), Handler: api.Handler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 20 * time.Second, WriteTimeout: 15 * time.Second, IdleTimeout: 60 * time.Second}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

@@ -5,6 +5,9 @@ data/seed/*
 !data/seed/.gitkeep
 data/runtime/*
 !data/runtime/.gitkeep
+data/evidence/
+data/credentials/
+data/backups/
 .env
 .env.*
 !.env.example

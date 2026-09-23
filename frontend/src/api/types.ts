@@ -1,6 +1,10 @@
+export type Locale = 'ru' | 'kk' | 'en';
 export interface Session {
+  account_id: string;
+  login: string;
   role: 'employee' | 'hr';
   employee_id: string;
+  locale: Locale;
 }
 export interface EmployeeSummary {
   employee_id: string;
@@ -76,16 +80,17 @@ export interface Evidence {
   factor: string;
   text: string;
 }
+export interface ExpectedGain {
+  skill_id: string;
+  name: string;
+  before: number;
+  after: number;
+  required: number;
+}
 export interface Recommendation {
   event: Event;
   score: number;
-  expected_gains: {
-    skill_id: string;
-    name: string;
-    before: number;
-    after: number;
-    required: number;
-  }[];
+  expected_gains: ExpectedGain[];
   evidence: Evidence[];
   explanation: string;
   cross_role: boolean;
@@ -134,4 +139,125 @@ export interface ImportResult {
   history_added: number;
   history_updated: number;
   revision: number;
+}
+export interface ModuleConfig {
+  event_id: string;
+  version: number;
+  outcome: Record<Locale, string>;
+  criteria: Record<Locale, string[]>;
+  reward_exp: number;
+  repeat_policy: string;
+}
+export type ModuleState =
+  'available' | 'in_progress' | 'pending' | 'changes_requested' | 'completed' | 'locked';
+export interface Enrollment {
+  id: string;
+  employee_id: string;
+  event_id: string;
+  occurrence: string;
+  config: ModuleConfig;
+  state: ModuleState;
+  started_at: string;
+  business_date: string;
+  completion_id?: string;
+}
+export interface Attachment {
+  id: string;
+  submission_id: string;
+  filename: string;
+  media_type: string;
+  size: number;
+  sha256: string;
+}
+export interface Submission {
+  id: string;
+  enrollment_id: string;
+  version: number;
+  text: string;
+  url: string;
+  attachments: Attachment[];
+  status: string;
+  submitted_at: string;
+  business_date: string;
+}
+export interface ReviewDecision {
+  id: string;
+  submission_id: string;
+  enrollment_id: string;
+  reviewer_id: string;
+  reviewer_login?: string;
+  action: string;
+  comment: string;
+  recorded_at: string;
+  business_date: string;
+  reversal_of?: string;
+  completion_id?: string;
+}
+export interface ExpEntry {
+  id: string;
+  employee_id: string;
+  event_id: string;
+  approval_id: string;
+  amount: number;
+  month: string;
+  recorded_at: string;
+  reversal_of?: string;
+}
+export interface Experience {
+  month: string;
+  monthly_exp: number;
+  total_exp: number;
+  tree_level: number;
+  energy: number;
+  entries: ExpEntry[];
+}
+export interface ModuleView {
+  event: Event;
+  config: ModuleConfig;
+  state: ModuleState;
+  recommended: boolean;
+  blocked_reason: string;
+  branch: string;
+  category: string;
+  expected_gains: ExpectedGain[];
+  enrollment: Enrollment | null;
+}
+export interface Development {
+  items: ModuleView[];
+  experience: Experience;
+  business_date: string;
+  revision: number;
+}
+export interface EnrollmentDetail {
+  enrollment: Enrollment;
+  event: Event;
+  versions: Submission[];
+  decisions: ReviewDecision[];
+}
+export interface SubmissionDetail extends EnrollmentDetail {
+  submission: Submission;
+  employee: Employee;
+}
+export interface LeaderboardEntry {
+  rank: number;
+  full_name: string;
+  exp: number;
+  employee_id?: string;
+  department?: string;
+  role?: string;
+}
+export interface Leaderboard {
+  month: string;
+  months: string[];
+  items: LeaderboardEntry[];
+}
+export type AssistantAction = 'why' | 'fifteen_minutes' | 'simplify' | 'alternative' | 'start';
+export interface AssistantResponse {
+  benefit: string;
+  first_step: string;
+  application: string;
+  mode: 'llm' | 'rules';
+  notice: string;
+  evidence: Evidence[];
+  alternative_event_id?: string;
 }

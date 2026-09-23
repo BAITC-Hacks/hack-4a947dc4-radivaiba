@@ -17,7 +17,10 @@ services:
       start_period: 10s
     restart: unless-stopped
   careerquest:
-    build: .
+    build:
+      context: .
+      args:
+        BUILD_VERSION: ${BUILD_VERSION:-local}
     ports:
       - '127.0.0.1:8080:8080'
     env_file: .env
@@ -30,6 +33,10 @@ services:
         condition: service_healthy
     volumes:
       - ./data/seed:/app/data/seed:ro
+      - evidence:/app/data/evidence
+      - credentials:/app/data/credentials
     restart: unless-stopped
 volumes:
   postgres_data:
+  evidence:
+  credentials:

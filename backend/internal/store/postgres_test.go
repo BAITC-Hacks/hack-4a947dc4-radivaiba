@@ -1,6 +1,7 @@
 package store
 
 import (
+	"careerquest/internal/engine"
 	"careerquest/internal/model"
 	"careerquest/internal/testfixture"
 	"context"
@@ -66,6 +67,7 @@ func writeTestSeed(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
 	d := testfixture.Dataset()
+	d.Events[0].Description = "Практический модуль: описание должно пережить PostgreSQL round-trip."
 	// Forward manager reference exercises the deferred employee foreign key.
 	d.Employees[0].ManagerID = &d.Employees[1].ID
 	for name, value := range map[string]any{
@@ -103,8 +105,11 @@ func TestPostgresPersistenceAndIdempotency(t *testing.T) {
 	dsn, seed := testPostgresURL(t), writeTestSeed(t)
 	s := openTestPostgres(t, dsn, seed)
 	d, err := LoadSeed(seed)
-	if err != nil || !reflect.DeepEqual(d, s.Snapshot()) {
+	if err != nil {
 		t.Fatalf("seed round trip changed the dataset: %v", err)
+	}
+	if err = compareLegacy(d, s.Snapshot()); err != nil {
+		t.Fatal(err)
 	}
 	var wg sync.WaitGroup
 	for i := 0; i < 12; i++ {
@@ -224,5 +229,118 @@ func TestPostgresInvalidSeedCanBeRetried(t *testing.T) {
 	s := openTestPostgres(t, dsn, writeTestSeed(t))
 	if s.Snapshot().Revision != 1 || len(s.Snapshot().Employees) != 2 {
 		t.Fatal("failed seed left partial data")
+	}
+}
+
+func TestPostgresApprovalLedgerRollbackAndLateMonthRestart(t *testing.T) {
+	dsn := testPostgresURL(t)
+	s := openTestPostgres(t, dsn, writeTestSeed(t))
+	credentials, err := s.ProvisionAccounts("", "hr", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var hrID, employeePassword string
+	for _, a := range s.RawSnapshot().Workflow.Accounts {
+		if a.Role == "hr" {
+			hrID = a.ID
+		}
+	}
+	for _, c := range credentials {
+		if c.Login == "E0001" {
+			employeePassword = c.Password
+		}
+	}
+	if hrID == "" || employeePassword == "" {
+		t.Fatal("provisioned identities missing")
+	}
+	en, err := s.StartModule("E0001", "design-course")
+	if err != nil {
+		t.Fatal(err)
+	}
+	proof, err := s.Submit(en.ID, "E0001", "Documented architecture decision with tradeoffs.", "https://example.com/proof", "pg-proof-request", []model.Attachment{{ID: "AT_PG_PROOF", Filename: "proof.pdf", MediaType: "application/pdf", Size: 100, SHA256: "test-checksum", StorageKey: "AT_PG_PROOF"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = s.SetBusinessDate("2026-11-01"); err != nil {
+		t.Fatal(err)
+	}
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if _, err := s.Decide(hrID, proof.Submission.ID, "approve", "Reviewed practical evidence", "pg-approve-request"); err != nil {
+				t.Error(err)
+			}
+		}()
+	}
+	wg.Wait()
+	if len(s.RawSnapshot().Workflow.Ledger) != 1 || len(s.RawSnapshot().History) != 1 {
+		t.Fatal("parallel retries awarded twice")
+	}
+	beforeImport := s.RawSnapshot()
+	modified := beforeImport.Employees[0]
+	modified.Skills = map[string]int{"design": 5, "speech": 0, "cloud": 4}
+	badJSON, _ := json.Marshal(model.EmployeesFile{Meta: beforeImport.Catalog.Meta, Employees: []model.Employee{modified}})
+	if _, err = s.Import(badJSON, nil); err == nil || s.RawSnapshot().Revision != beforeImport.Revision {
+		t.Fatal("import rewrote an assessed baseline with active application progress")
+	}
+	modified = beforeImport.Employees[0]
+	modified.Department = "Updated department after November approval"
+	goodJSON, _ := json.Marshal(model.EmployeesFile{Meta: beforeImport.Catalog.Meta, Employees: []model.Employee{modified}})
+	if _, err = s.Import(goodJSON, nil); err != nil {
+		t.Fatal("valid import rejected linked future application completion", err)
+	}
+	expected := s.RawSnapshot()
+	s.Close()
+	reopened := openTestPostgres(t, dsn, "missing-seed")
+	if !reflect.DeepEqual(expected, reopened.RawSnapshot()) {
+		t.Fatal("workflow fields changed on PostgreSQL restart")
+	}
+	if _, ok := reopened.Authenticate("E0001", employeePassword); !ok {
+		t.Fatal("account hash lost on restart")
+	}
+	if err = reopened.SetBusinessDate("2026-11-01"); err != nil {
+		t.Fatal(err)
+	}
+	xp := engine.ExperienceFor(reopened.Snapshot(), "E0001", "2026-11")
+	if xp.MonthlyEXP != 30 || xp.TotalEXP != 30 || engine.ExperienceFor(reopened.Snapshot(), "E0001", "2026-10").MonthlyEXP != 0 {
+		t.Fatalf("late-month reward: %+v", xp)
+	}
+	storedProof, err := reopened.Submission(proof.Submission.ID)
+	if err != nil || len(storedProof.Submission.Attachments) != 1 || storedProof.Submission.Attachments[0].StorageKey != "AT_PG_PROOF" {
+		t.Fatal("proof metadata lost", err)
+	}
+	// Fail after profile/history writes to prove workflow and baseline roll back together.
+	next := reopened.nextWorkflow()
+	next.Employees = append([]model.Employee{}, next.Employees...)
+	next.Employees[0].Department = "This update must roll back"
+	next.Workflow.Ledger = append(next.Workflow.Ledger, model.ExpEntry{ID: "XP_INVALID_FK", EmployeeID: "E0001", ApprovalID: "missing-approval", Amount: 1, Month: "2026-11"})
+	if err = reopened.save(next); err == nil {
+		t.Fatal("invalid workflow reference committed")
+	}
+	if !reflect.DeepEqual(expected, reopened.RawSnapshot()) {
+		t.Fatal("failed transaction published workflow")
+	}
+	check := openTestPostgres(t, dsn, "missing-seed")
+	if !reflect.DeepEqual(expected, check.RawSnapshot()) {
+		t.Fatal("failed transaction changed durable baseline/workflow")
+	}
+	check.Close()
+	approvalID := expected.Workflow.Ledger[0].ApprovalID
+	if _, err = reopened.Revoke(hrID, approvalID, "Incorrect evidence, requires revision", "pg-revoke-request"); err != nil {
+		t.Fatal(err)
+	}
+	afterRevoke := reopened.RawSnapshot()
+	reopened.Close()
+	final := openTestPostgres(t, dsn, "missing-seed")
+	if !reflect.DeepEqual(afterRevoke, final.RawSnapshot()) {
+		t.Fatal("revocation lost on restart")
+	}
+	if len(final.RawSnapshot().History) != 1 || len(final.RawSnapshot().Workflow.Decisions) != 2 || len(final.RawSnapshot().Workflow.Ledger) != 2 {
+		t.Fatal("audit records were deleted")
+	}
+	if xp = engine.ExperienceFor(final.Snapshot(), "E0001", "2026-11"); xp.TotalEXP != 0 || xp.MonthlyEXP != 0 {
+		t.Fatal("revocation did not correct original month", xp)
 	}
 }

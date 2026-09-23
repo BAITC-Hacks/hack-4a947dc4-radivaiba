@@ -1,419 +1,575 @@
-/* Unlayered breakpoints override the base layer without specificity overrides. */
-@media (max-width: 1200px) {
-  .app-shell {
-    width: calc(100% - 48px);
-    margin: 28px auto;
-  }
+@media (max-width: 1100px) {
   .app-header {
-    gap: 18px;
-    padding: 15px 24px;
-  }
-  .workspace-location {
-    display: none;
-  }
-  .main-nav {
-    margin-left: auto;
-  }
-  .topbar-actions {
-    margin-left: 0;
-  }
-  .profile-grid {
-    grid-template-columns: minmax(0, 1fr) 290px;
-  }
-  .journey-foot > span {
-    display: none;
-  }
-  .login-page {
-    width: calc(100% - 64px);
-  }
-}
-@media (max-width: 900px) {
-  .app-shell {
-    width: calc(100% - 32px);
-    margin: 20px auto;
-    border-radius: 20px;
-  }
-  .app-header {
-    gap: 12px;
-    padding: 15px 20px;
-    flex-wrap: wrap;
-  }
-  .app-header .brand {
-    font-size: 20px;
-  }
-  .app-header .brand small {
-    display: none;
+    gap: 20px;
+    padding: 20px 28px;
   }
   .main-nav button {
-    font-size: 11px;
-    padding: 9px 11px;
+    padding: 10px;
+    font-size: 12px;
   }
-  .role-pill > span:last-child {
+  .role-pill {
     display: none;
-  }
-  .topbar-actions {
-    gap: 3px;
-  }
-  .topbar {
-    padding: 18px 20px 0;
   }
   .main-content {
-    padding: 22px 20px 0;
+    padding: 28px 28px 0;
   }
-  h1 {
-    font-size: 25px;
+  .growth-layout {
+    gap: 18px;
   }
-  .snapshot {
-    display: none;
+  .tree-panel {
+    padding: 23px 20px 18px;
   }
-  .stats-grid {
-    gap: 10px;
+  .next-step {
+    padding: 24px;
   }
-  .stat {
-    padding: 14px;
-  }
-  .stat > span {
-    font-size: 10px;
-  }
-  .stat small {
-    font-size: 9px;
-  }
-  .profile-grid {
-    grid-template-columns: minmax(0, 1fr) 245px;
-    gap: 12px;
-  }
-  .profile-card {
-    padding: 20px 18px 0;
-  }
-  .profile-details {
-    font-size: 10px;
-  }
-  .completed-note {
-    margin: 20px -18px 0;
-    padding: 12px 18px;
-    font-size: 9px;
-  }
-  .journey-card {
-    padding: 20px 20px 0;
-  }
-  .journey-chip {
-    display: none;
-  }
-  .journey-title {
-    gap: 10px;
-  }
-  .journey-title h2 {
-    font-size: 29px;
-  }
-  .journey-title h2 span {
-    font-size: 16px;
-  }
-  .progress-ring {
-    width: 112px;
-    height: 112px;
-  }
-  .ring-label strong {
-    font-size: 28px;
-  }
-  .journey-stages {
-    gap: 6px;
-    font-size: 9px;
-  }
-  .journey-stages span {
-    gap: 4px;
-  }
-  .journey-foot {
-    margin: 0 -20px;
-    padding: 12px 20px;
-  }
-  .recommendation-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .recommendation:last-child:nth-child(odd) {
-    grid-column: 1 / -1;
-  }
-  .hr-grid {
-    grid-template-columns: 1fr;
-  }
-  .login-page {
-    width: calc(100% - 48px);
-    grid-template-columns: 1fr 1fr;
-  }
-  .login-story {
-    padding: 30px;
-  }
-  .story-content h1 {
-    font-size: 38px;
-  }
-  .login-form-wrap {
-    padding: 30px;
-  }
-  .login-form h2 {
-    font-size: 24px;
+  .next-step h2 {
+    font-size: 22px;
   }
 }
-@media (max-width: 650px) {
-  .app-shell {
-    width: calc(100% - 20px);
-    margin: 10px auto;
-    border-radius: 18px;
-  }
+@media (max-width: 850px) {
   .app-header {
-    padding: 12px 14px;
-    gap: 12px;
-  }
-  .app-header .brand {
-    font-size: 20px;
-  }
-  .app-header .brand-icon {
-    width: 26px;
-  }
-  .topbar-actions {
-    margin-left: auto;
+    height: auto;
+    flex-wrap: wrap;
+    padding: 18px 24px;
+    gap: 18px;
   }
   .main-nav {
     order: 3;
-    width: 100%;
-    margin: 0;
+    flex-basis: 100%;
     border-top: 1px solid var(--border);
-    padding-top: 10px;
+    padding-top: 12px;
   }
   .main-nav button {
     flex: 1;
     justify-content: center;
+    font-size: 13px;
   }
-  .main-nav button.active {
-    background: #f8755222;
-  }
-  .role-avatar {
-    width: 29px;
-    height: 29px;
-  }
-  .icon-button {
-    padding: 9px;
-  }
-  .topbar {
-    padding: 16px 15px 0;
-  }
-  .breadcrumb {
-    font-size: 9px;
-    gap: 5px;
-  }
-  .local-label {
-    font-size: 8px;
+  .topbar-actions {
+    margin-left: auto;
   }
   .main-content {
-    padding: 20px 14px 0;
+    padding: 25px 22px 0;
   }
-  .page-heading {
-    gap: 12px;
+  .growth-layout {
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+  }
+  .goal-card {
+    padding: 22px;
+    gap: 16px;
+  }
+  .goal-right {
+    width: 180px;
+  }
+  .tree-panel {
+    padding: 20px 15px;
+  }
+  .tree-panel h2 {
+    font-size: 16px;
+  }
+  .tree-panel .section-heading {
     align-items: flex-start;
-    flex-wrap: wrap;
-    margin-bottom: 20px;
   }
-  h1 {
-    font-size: 25px;
-    letter-spacing: -0.65px;
+  .view-switch button {
+    font-size: 0;
+    gap: 0;
+    padding: 7px;
   }
-  .page-heading p {
-    font-size: 11px;
-  }
-  .stats-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .stat {
-    padding: 14px;
-    border-radius: 12px;
-  }
-  .stat strong {
-    font-size: 28px;
-  }
-  .profile-grid {
-    grid-template-columns: 1fr;
-  }
-  .journey-card {
-    grid-column: 1;
-    grid-row: 1;
-  }
-  .profile-card {
-    grid-column: 1;
-    grid-row: 2;
-  }
-  .journey-title {
-    margin: 23px 0;
-  }
-  .journey-title h2 {
-    font-size: 32px;
-  }
-  .journey-title h2 span {
-    font-size: 17px;
-  }
-  .journey-chip {
-    display: block;
-    font-size: 8px;
-  }
-  .profile-card .avatar {
-    float: left;
-    margin: 0 12px 10px 0;
-  }
-  .profile-tags {
-    clear: both;
-  }
-  .profile-details {
-    font-size: 11px;
-  }
-  .completed-note {
+  .tree-level {
     font-size: 10px;
   }
-  .recommendation-grid {
-    grid-template-columns: 1fr;
+  .tree-legend {
+    gap: 7px;
+    font-size: 9px;
   }
-  .recommendation {
-    padding: 19px;
+  .next-step {
+    padding: 22px 19px;
   }
-  .recommendation h3 {
-    min-height: 0;
+  .next-step h2 {
+    font-size: 20px;
   }
-  .gain-list {
-    margin-top: 0;
+  .next-step .benefit {
+    font-size: 13px;
   }
-  .section-heading {
-    gap: 10px;
-  }
-  .section-heading h2 {
-    font-size: 17px;
-  }
-  .section-heading > .tag {
-    font-size: 8px;
-  }
-  .tabs {
-    gap: 4px;
-    padding: 12px 10px;
-  }
-  .tabs button {
-    font-size: 10px;
-    gap: 5px;
-    padding: 8px;
-  }
-  .tabs button > svg {
-    width: 14px;
-  }
-  .tabs button > span {
-    font-size: 8px;
-  }
-  .table-intro {
-    flex-wrap: wrap;
-    padding: 15px;
+  .module-meta {
+    font-size: 11px;
     gap: 8px;
   }
-  th,
-  td {
-    padding-left: 15px;
-    padding-right: 15px;
+  .tree-apple {
+    width: 36px;
+    height: 42px;
   }
-  .skills-panel > .section-note {
-    padding: 14px 15px;
+  .tree-apple svg {
+    width: 30px;
+    height: 30px;
   }
-  .history-list {
-    padding: 4px 15px;
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .hr-grid {
+    grid-template-columns: 1fr;
+  }
+  .identity .avatar {
+    width: 39px;
+    height: 39px;
+  }
+  .identity strong {
+    font-size: 12px;
+  }
+  .identity p {
+    font-size: 11px;
+  }
+  .employee-picker {
+    flex-wrap: wrap;
+  }
+  .login-story {
+    padding: 35px;
+  }
+  .login-form-wrap {
+    padding: 35px;
+  }
+  .story-content h1 {
+    font-size: 44px;
+  }
+  .welcome-tree {
+    width: 260px;
+    right: -110px;
+  }
+  .intro-steps {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .login-language {
+    right: 28px;
+  }
+  .leaderboard-hero {
+    padding: 24px;
+  }
+  .leaderboard-hero h2 {
+    font-size: 23px;
+  }
+}
+@media (max-width: 650px) {
+  .app-header {
+    padding: 16px 18px;
+    gap: 14px;
+  }
+  .brand {
+    font-size: 21px;
+  }
+  .brand small {
+    font-size: 9px;
+  }
+  .brand-icon {
+    width: 37px;
+    height: 37px;
+    border-radius: 12px;
+  }
+  .topbar-actions {
+    gap: 6px;
+  }
+  .language-switch button {
+    font-size: 10px;
+    padding: 5px 6px;
+  }
+  .main-nav {
+    gap: 2px;
+  }
+  .main-nav button {
+    font-size: 11px;
+    padding: 10px 5px;
+    gap: 5px;
+  }
+  .main-nav button svg {
+    width: 16px;
+  }
+  .main-content {
+    padding: 22px 16px 0;
+  }
+  .breadcrumb {
+    font-size: 11px;
+    margin-bottom: 19px;
+  }
+  .page-heading {
+    align-items: flex-start;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin-bottom: 21px;
+  }
+  .page-heading h1 {
+    font-size: 27px;
+  }
+  .page-heading p {
+    font-size: 14px;
+  }
+  .identity {
+    gap: 9px;
+  }
+  .identity strong {
+    font-size: 13px;
+  }
+  .identity p {
+    font-size: 12px;
+  }
+  .goal-card {
+    grid-template-columns: 1fr;
+    padding: 22px;
+    gap: 17px;
+  }
+  .goal-card h2 {
+    font-size: 21px;
+  }
+  .goal-right {
+    width: 100%;
+  }
+  .goal-right small {
+    font-size: 12px;
+  }
+  .growth-layout {
+    grid-template-columns: 1fr;
+  }
+  .tree-panel {
+    padding: 23px 20px 20px;
+  }
+  .tree-panel h2 {
+    font-size: 19px;
+  }
+  .tree-panel .section-heading {
+    align-items: center;
+  }
+  .view-switch button {
+    font-size: 11px;
+    gap: 5px;
+    padding: 7px 9px;
+  }
+  .tree-scene {
+    max-width: 430px;
+  }
+  .tree-apple {
+    width: 44px;
+    height: 48px;
+  }
+  .tree-apple svg {
+    width: 36px;
+    height: 36px;
+  }
+  .tree-legend {
+    font-size: 11px;
+    gap: 12px;
+  }
+  .next-step {
+    padding: 25px;
+  }
+  .next-step h2 {
+    font-size: 24px;
+  }
+  .next-step .benefit {
+    font-size: 14px;
+  }
+  .next-step .button {
+    margin-top: 10px;
+  }
+  .module-meta {
+    font-size: 12px;
+    gap: 12px;
+  }
+  .alternatives {
+    grid-template-columns: 1fr;
+  }
+  .alternative {
+    padding: 20px;
+  }
+  .alternative h3 {
+    font-size: 16px;
+  }
+  .experience-strip {
+    grid-template-columns: 1fr 1fr;
+    padding: 20px 0;
+    gap: 19px 0;
+  }
+  .experience-strip > div {
+    padding: 0 20px;
+  }
+  .experience-strip > div:nth-child(2) {
+    border: 0;
+  }
+  .experience-strip > div:last-child {
+    grid-column: 1/-1;
+    border-top: 1px solid var(--border);
+    padding-top: 17px;
+  }
+  .experience-strip .exp-label {
+    font-size: 12px;
+  }
+  .experience-strip small {
+    font-size: 12px;
+  }
+  .section-heading h2 {
+    font-size: 19px;
+  }
+  .section-heading {
+    gap: 12px;
+  }
+  .section-heading .text-button {
+    font-size: 12px;
+  }
+  .details-section > summary {
+    padding: 20px;
+    font-size: 14px;
+  }
+  .details-section .details-body {
+    padding: 18px 20px;
   }
   .history-item {
     flex-wrap: wrap;
     gap: 10px;
   }
   .history-item > div {
-    min-width: 150px;
+    min-width: 170px;
   }
-  .history-item > .tag {
+  .history-item strong {
+    font-size: 14px;
+  }
+  .history-item small {
+    font-size: 12px;
+  }
+  .history-item > .status {
     margin-left: 45px;
   }
-  .panel-heading {
+  .page-footer {
+    font-size: 11px;
+    flex-direction: column;
+    gap: 5px;
+    padding: 27px 0;
+  }
+  .dialog-content {
+    padding: 21px;
+  }
+  .dialog-header h2 {
+    font-size: 21px;
+  }
+  .dialog {
+    border-radius: 20px;
+    max-height: 94dvh;
+  }
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .form-actions {
     flex-wrap: wrap;
-    padding: 18px;
+  }
+  .form-actions .button {
+    flex: 1;
+  }
+  .dialog-section {
+    margin: 20px 0;
+  }
+  .proof-form label {
+    font-size: 14px;
+  }
+  .assistant-actions button {
+    font-size: 12px;
+    padding: 10px;
+  }
+  .stats-grid {
+    gap: 12px;
+  }
+  .stat {
+    padding: 17px;
+  }
+  .stat > span {
+    font-size: 12px;
+  }
+  .stat small {
+    font-size: 12px;
+  }
+  .stat strong {
+    font-size: 28px;
+  }
+  .panel-heading {
+    padding: 20px;
+    flex-wrap: wrap;
   }
   .panel-heading .search {
     width: 100%;
   }
-  .search input {
-    max-width: none;
-    width: 100%;
-  }
   .hr-panel,
   .import-panel {
-    padding: 18px;
+    padding: 20px;
   }
   .upload-grid {
     grid-template-columns: 1fr;
   }
-  .employee-picker select {
+  .tabs {
+    width: 100%;
+    gap: 4px;
+    padding: 5px;
+  }
+  .tabs button {
+    padding: 10px 8px;
+    font-size: 12px;
+    gap: 5px;
+    flex: 1;
+    justify-content: center;
+  }
+  .tabs button svg {
+    width: 15px;
+  }
+  .filters {
+    gap: 10px;
+  }
+  .filters .search {
     width: 100%;
   }
-  .page-footer {
-    flex-direction: column;
-    gap: 5px;
-    font-size: 8px;
-    padding: 22px 2px;
+  .filters select {
+    max-width: none;
+    flex: 1;
+  }
+  .queue-card {
+    padding: 18px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .queue-card > .button {
+    width: 100%;
+  }
+  .queue-card h3 {
+    font-size: 15px;
+  }
+  .leaderboard-hero {
+    padding: 23px;
+    align-items: flex-start;
+  }
+  .trophy {
+    width: 48px;
+    height: 48px;
+  }
+  .trophy svg {
+    width: 25px;
+  }
+  .leaderboard-hero h2 {
+    font-size: 21px;
+  }
+  .leaderboard-hero p {
+    font-size: 13px;
+  }
+  .leader-row {
+    padding: 16px;
+    gap: 12px;
+  }
+  .leader-name strong {
+    font-size: 13px;
+  }
+  .leader-exp {
+    font-size: 18px;
+  }
+  .leader-rank {
+    width: 22px;
+  }
+  .leaderboard-hero .eyebrow {
+    font-size: 10px;
+  }
+  .employee-picker {
+    padding: 15px;
+  }
+  .employee-picker select {
+    width: 100%;
+    max-width: none;
   }
   .login-page {
-    width: calc(100% - 28px);
     grid-template-columns: 1fr;
-    margin: 20px auto;
-    border-radius: 22px;
   }
   .login-story {
-    padding: 26px;
-    border-right: 0;
-    border-bottom: 1px solid var(--border);
+    padding: 24px;
+    min-height: 350px;
   }
   .story-content {
-    padding: 36px 0 0;
+    padding: 35px 0;
   }
   .story-content h1 {
     font-size: 39px;
-    margin-top: 18px;
+    letter-spacing: -1.5px;
   }
   .story-content > p {
-    margin-top: 18px;
-    font-size: 11px;
+    max-width: 300px;
+    font-size: 14px;
   }
-  .story-content .eyebrow {
-    font-size: 7px;
-    letter-spacing: 1px;
+  .intro-steps {
+    margin-top: 23px;
   }
-  .story-path,
-  .path-labels,
+  .welcome-tree {
+    width: 230px;
+    right: -60px;
+    bottom: 0;
+  }
   .story-footer {
     display: none;
   }
   .login-form-wrap {
-    padding: 30px 26px;
+    padding: 75px 26px 35px;
   }
-  .login-form {
-    max-width: none;
-  }
-  .login-form > .eyebrow {
-    font-size: 8px;
+  .login-language {
+    top: 22px;
+    right: 26px;
   }
   .login-form h2 {
-    font-size: 25px;
-  }
-}
-@media (max-width: 360px) {
-  .app-header .brand {
-    font-size: 18px;
-    gap: 6px;
-  }
-  .app-header .brand-icon {
-    width: 22px;
-  }
-  .topbar-actions .icon-button {
-    padding: 7px;
+    font-size: 28px;
   }
   .role-avatar {
-    width: 26px;
-    height: 26px;
+    display: none;
   }
-  .tabs {
-    flex-wrap: wrap;
+  .help-panel {
+    padding: 20px;
+  }
+  .goal-current {
+    font-size: 13px;
+  }
+  .form-actions .text-button {
+    min-width: 100%;
+  }
+}
+@media (max-width: 370px) {
+  .app-header {
+    padding: 14px;
+  }
+  .brand small {
+    display: none;
+  }
+  .brand {
+    font-size: 19px;
+    gap: 7px;
+  }
+  .brand-icon {
+    width: 32px;
+    height: 32px;
+  }
+  .language-switch button {
+    padding: 4px 5px;
+  }
+  .topbar-actions .icon-button {
+    width: 31px;
+  }
+  .main-nav button {
+    font-size: 10px;
+  }
+  .main-content {
+    padding: 20px 12px 0;
+  }
+  .tree-panel {
+    padding: 19px 14px;
+  }
+  .view-switch button {
+    font-size: 0;
+    gap: 0;
+  }
+  .tree-legend {
+    font-size: 10px;
+  }
+  .tabs button {
+    font-size: 11px;
+  }
+  .leaderboard-hero {
+    padding: 20px;
+    gap: 12px;
   }
 }

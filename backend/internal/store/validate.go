@@ -122,6 +122,12 @@ func Validate(d model.Dataset) error {
 			}
 		}
 	}
+	approvedDates := map[string]string{}
+	for _, decision := range d.Workflow.Decisions {
+		if decision.Action == "approve" && strings.HasPrefix(decision.CompletionID, "APP_") {
+			approvedDates[decision.CompletionID] = decision.BusinessDate
+		}
+	}
 	for _, r := range d.History {
 		where := "activity_history.csv " + r.ID
 		if err := uniqueID(records, r.ID, where); err != nil {
@@ -130,7 +136,8 @@ func Validate(d model.Dataset) error {
 		if !employees[r.EmployeeID] || !events[r.EventID] {
 			return fmt.Errorf("%s: unknown employee_id/event_id", where)
 		}
-		if !validDate(r.Date) || r.Date > d.Catalog.Meta.AsOfDate || (r.DueDate != "" && !validDate(r.DueDate)) {
+		appOwned := approvedDates[r.ID] == r.Date && r.Status == "completed" && r.AssignedBy == "hr"
+		if !validDate(r.Date) || (r.Date > d.Catalog.Meta.AsOfDate && !appOwned) || (r.DueDate != "" && !validDate(r.DueDate)) {
 			return fmt.Errorf("%s: invalid or future date", where)
 		}
 		if !oneOf(r.Status, "completed", "in_progress", "dropped", "no_show", "declined", "overdue") || !oneOf(r.AssignedBy, "self", "manager", "hr") {

@@ -13,7 +13,7 @@ paths:
       security: []
       responses:
         '200':
-          description: Dataset loaded and ready
+          description: Dataset loaded and PostgreSQL reachable
           content:
             application/json:
               schema:
@@ -23,6 +23,7 @@ paths:
                   status: { type: string, enum: [ok] }
                   as_of_date: { type: string, format: date }
                   revision: { type: integer }
+        '503': { $ref: '#/components/responses/Error' }
   /session:
     post:
       security: []
@@ -168,6 +169,8 @@ paths:
         '400': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '422': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '500': { $ref: '#/components/responses/Error' }
 components:
   securitySchemes:
     sessionCookie:

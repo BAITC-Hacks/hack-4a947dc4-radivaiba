@@ -16,6 +16,7 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -49,15 +50,25 @@ func loadEnv(path string) {
 }
 func main() {
 	loadEnv(".env")
-	data, err := store.Open(env("DATA_DIR", "data/seed"), env("STATE_PATH", "data/runtime/state.json"))
-	if err != nil {
-		log.Fatalf("Cannot load dataset: %v. Run npm run setup -- --data-dir <folder>", err)
-	}
+	seedDir := env("DATA_DIR", "data/seed")
 	if os.Getenv("VALIDATE_ONLY") == "1" {
-		d := data.Snapshot()
+		d, err := store.LoadSeed(seedDir)
+		if err != nil {
+			log.Fatalf("Cannot validate seed files: %v", err)
+		}
 		log.Printf("Validated: employees=%d events=%d skills=%d history=%d", len(d.Employees), len(d.Events), len(d.Catalog.Skills), len(d.History))
 		return
 	}
+	if os.Getenv("DATABASE_URL") == "" {
+		log.Fatal("Set DATABASE_URL in .env, then start PostgreSQL (docker compose up -d postgres).")
+	}
+	startup, cancelStartup := context.WithTimeout(context.Background(), 30*time.Second)
+	data, err := store.OpenPostgres(startup, os.Getenv("DATABASE_URL"), seedDir)
+	cancelStartup()
+	if err != nil {
+		log.Fatalf("Cannot open PostgreSQL dataset: %v", err)
+	}
+	defer data.Close()
 	employeePassword, hrPassword := os.Getenv("DEMO_EMPLOYEE_PASSWORD"), os.Getenv("DEMO_HR_PASSWORD")
 	if employeePassword == "" || hrPassword == "" || employeePassword == hrPassword {
 		log.Fatal("Set separate DEMO_EMPLOYEE_PASSWORD and DEMO_HR_PASSWORD in .env (npm run setup generates them).")
@@ -69,7 +80,7 @@ func main() {
 	timeout, _ := strconv.Atoi(env("LLM_TIMEOUT_MS", "8000"))
 	api := &httpapi.Server{Store: data, Auth: auth.New(employeeID, employeePassword, hrPassword), LLM: &llm.Client{BaseURL: env("LLM_BASE_URL", "https://api.openai.com/v1"), Model: os.Getenv("LLM_MODEL"), APIKey: os.Getenv("LLM_API_KEY"), Timeout: time.Duration(timeout) * time.Millisecond}, WebDir: env("WEB_DIR", "frontend/dist"), DevOrigin: os.Getenv("DEV_ORIGIN")}
 	server := &http.Server{Addr: net.JoinHostPort(env("HOST", "127.0.0.1"), env("PORT", "8080")), Handler: api.Handler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 20 * time.Second, WriteTimeout: 15 * time.Second, IdleTimeout: 60 * time.Second}
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	go func() {
 		<-ctx.Done()

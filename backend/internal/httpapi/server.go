@@ -60,6 +60,10 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	s.attempts = map[string]attempt{}
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
+		if err := s.Store.Health(r.Context()); err != nil {
+			fail(w, 503, "storage_unavailable", "База данных недоступна.")
+			return
+		}
 		d := s.Store.Snapshot()
 		send(w, 200, map[string]any{"status": "ok", "as_of_date": d.Catalog.Meta.AsOfDate, "revision": d.Revision})
 	})
@@ -224,6 +228,10 @@ func (s *Server) complete(w http.ResponseWriter, r *http.Request) {
 		fail(w, 409, "not_eligible", "Активность больше недоступна или не сокращает разрыв до цели. Обновите рекомендации.")
 		return
 	}
+	if errors.Is(err, store.ErrStaleRevision) {
+		fail(w, 409, "stale_revision", "Данные изменились в другом процессе. Перезапустите сервер.")
+		return
+	}
 	if err != nil {
 		log.Printf("completion persistence failed: %v", err)
 		fail(w, 500, "save_failed", "Не удалось сохранить прогресс. Изменения не применены.")
@@ -265,6 +273,15 @@ func (s *Server) importData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	result, err := s.Store.Import(employees, history)
+	if errors.Is(err, store.ErrStaleRevision) {
+		fail(w, 409, "stale_revision", "Данные изменились в другом процессе. Перезапустите сервер.")
+		return
+	}
+	if errors.Is(err, store.ErrPersistence) {
+		log.Printf("import persistence failed: %v", err)
+		fail(w, 500, "save_failed", "Не удалось сохранить импорт. Изменения не применены.")
+		return
+	}
 	if err != nil {
 		fail(w, 422, "invalid_dataset", err.Error())
 		return
